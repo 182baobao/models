@@ -3,6 +3,8 @@ import numpy as np
 from sklearn.metrics import average_precision_score
 import xml.etree.ElementTree as ET
 
+from utils import label_map_util
+
 
 def read_img_xml_as_eval_info(img_path, xml_path):
     tree = ET.parse(xml_path)
@@ -30,7 +32,7 @@ def read_img_xml_as_eval_info(img_path, xml_path):
         ymax = int(xml_box.find('ymax').text) / height
         objects.append([class_names.index(cls_name), xmin, ymin, xmax, ymax])
     info['objects'] = objects
-    # info['image'] = cv2.imread(img_path)
+    info['image'] = cv2.imread(img_path)
     return info
 
 
@@ -46,24 +48,32 @@ def get_overlap_area(rect1, rect2):
     return (xmax - xmin) * (ymax - ymin)
 
 
-def compute_mean_average_precision(predictions, top_k=0):
-    predictions_ = np.array(predictions)
-    predictions_ = predictions_[np.lexsort(predictions_[:, ::-1].T)][:]
-    end = predictions_.shape[0]
+def compute_mean_average_precision(predictions, ground_true, top_k=0):
+    end = predictions.size
     if top_k > 0:
-        assert top_k < predictions_.shape[0], 'top_k is larger than predictions !'
+        assert top_k < predictions.size, 'top_k is larger than predictions !'
         end = top_k
-    ground_true = np.where(predictions > 0.5, 1, 0)
     aps = []
     for __i in range(1, end + 1):
-        _aps = average_precision_score(ground_true[:__i, 0], predictions_[:__i, 0])
+        _aps = average_precision_score(ground_true[:__i], predictions[:__i])
         aps.append(_aps)
     return np.mean(aps)
 
 
+def get_label_from_pd_file(pd_file, class_num):
+    label_map = label_map_util.load_labelmap(pd_file)
+    categories = label_map_util.convert_label_map_to_categories(
+        label_map, max_num_classes=class_num, use_display_name=True)
+    category_index = label_map_util.create_category_index(categories)
+    return category_index
+
+
 if __name__ == '__main__':
-    pre = np.random.rand(4, 2)
-    pre = np.where(pre > 0.95, 0.95, pre)
-    pre = np.where(pre < 0.05, 0.05, pre)
+    pre = np.random.rand(1000) * 0.75
+    gt = np.array([1] * 620 + [0] * 380)
+    pre = pre[np.argsort(pre)]
     print(pre)
-    print(compute_mean_average_precision(pre))
+    y_true = np.array([0, 0, 1, 1])
+    y_scores = np.array([0.1, 0.4, 0.35, 0.9])
+    print(average_precision_score(y_true, y_scores))
+    print(compute_mean_average_precision(pre, gt))

@@ -87,14 +87,16 @@ class SubImageCropper(object):
             raise ValueError('no need parameters !')
         return self._image.shape < 2
 
-    def get_cropped_size(self):
+    @property
+    def cropped_size(self):
         return self._cropped_size
 
-    def get_image(self):
+    @property
+    def image(self):
         return self._image
 
     def update(self, *args, **kwargs):
-        if self._preprocess(args, kwargs):
+        if self._preprocess(*args, **kwargs):
             return
         print('cropping...')
         for x in self._widths:
@@ -120,9 +122,9 @@ class ImageDictCropper(SubImageCropper):
         self._image_dict = {}
 
     def _get_sub_image(self, x, y):
-        xmax = x + self.get_cropped_size()[0] + 1
-        ymax = y + self.get_cropped_size()[1] + 1
-        sub_image = self.get_image()[y:ymax, x:xmax, :]
+        xmax = x + self.cropped_size[0] + 1
+        ymax = y + self.cropped_size[1] + 1
+        sub_image = self.image[y:ymax, x:xmax, :]
         self._image_dict['{}_{}'.format(x, y)] = sub_image
 
     def get_images(self):
@@ -151,8 +153,8 @@ class ImageListCropper(SubImageCropper):
         self._objects = []
 
     def _get_sub_image(self, x, y):
-        h_list = list(range(y, y + self.get_cropped_size()[1] + 1))
-        w_list = list(range(x, x + self.get_cropped_size()[0] + 1))
+        h_list = list(range(y, y + self.cropped_size[1] + 1))
+        w_list = list(range(x, x + self.cropped_size[0] + 1))
         output_objects = []
         for ob in self._objects:
             if (ob[1] in w_list) and (ob[3] in w_list) and (
@@ -173,7 +175,7 @@ class ImageListCropper(SubImageCropper):
                     output_objects.append(
                         [ob[0], xmin - x, ymin - y, xmax - x, ymax - y])
         if len(output_objects) > 0:
-            sub_image = self.get_image()[h_list[0]:h_list[-1], w_list[0]:w_list[
+            sub_image = self.image[h_list[0]:h_list[-1], w_list[0]:w_list[
                 -1], :]
             self._write_image_and_object(sub_image, output_objects,
                                          os.path.join(self._output_root,
@@ -186,10 +188,10 @@ class ImageListCropper(SubImageCropper):
         _add_element(root, 'src_img', self._image_path)
         _add_element(root, 'xml_path', self._xml_path)
         size = ET.SubElement(root, 'size')
-        _add_element(size, 'src_height', str(self.get_image().shape[0]))
-        _add_element(size, 'src_width', str(self.get_image().shape[0]))
-        _add_element(size, 'height', str(self.get_cropped_size()[1]))
-        _add_element(size, 'width', str(self.get_cropped_size()[0]))
+        _add_element(size, 'src_height', str(self.image.shape[0]))
+        _add_element(size, 'src_width', str(self.image.shape[0]))
+        _add_element(size, 'height', str(self.cropped_size[1]))
+        _add_element(size, 'width', str(self.cropped_size[0]))
         _add_element(size, 'depth', '3')
         for ob in objects:
             ob_xml = ET.SubElement(root, 'object')
@@ -205,7 +207,7 @@ class ImageListCropper(SubImageCropper):
 
     def _preprocess(self, break_image=''):
         objects, break_instance = _read_xml(self._xml_path,
-                                            self.get_image().shape)
+                                            self.image.shape)
         self._objects = objects[:]
         if break_instance or (len(self._objects) == 0):
             if break_image != '':
