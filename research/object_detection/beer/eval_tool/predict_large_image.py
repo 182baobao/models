@@ -19,6 +19,21 @@ from beer.eval_tool.predict_images import parse_args
 from beer.eval_tool.predict_images import compute_accuracy
 from beer.eval_tool.predict_images import evaluate_predictions
 
+def _merge_region_prediction(boxes, scores, classes, percent):
+    idx = np.argsort(scores)
+    boxes = boxes[idx]
+    scores = scores[idx]
+    classes = classes[idx]
+    _boxes = []
+    _scores = []
+    _classes = []
+    for box, score_, cls in zip(boxes, scores, classes):
+        is_add = False
+        for _box, _sc, _cls in zip(_boxes, _scores, _classes):
+            if is_overlap(box,_box):
+                src_area = min((_box[2] - _box[0]) * (_box[3] - _box[1]),
+                               (box[2] - box[0]) * (box[3] - box[1]))
+                area = get_overlap_area(_box, box)
 
 def _merge_region_box_to_global(info, boxes, scores, classes, score, percent):
     objects = info['objects']
@@ -55,10 +70,10 @@ def _convert_region_box_to_global(info, boxes, scores, classes, index):
     _scores = []
     _classes = []
     for box, score, cls in zip(boxes, scores, classes):
-        xmin = (round(box[1] * w) + idx_x) / src_w
-        ymin = (round(box[0] * h) + idx_y) / src_h
-        xmax = (round(box[3] * w) + idx_x) / src_w
-        ymax = (round(box[2] * h) + idx_y) / src_h
+        xmin = (box[1] * w + idx_x) / src_w
+        ymin = (box[0] * h + idx_y) / src_h
+        xmax = (box[3] * w + idx_x) / src_w
+        ymax = (box[2] * h + idx_y) / src_h
         if (xmax >= 1.0) or (ymax >= 1.0):
             continue
         _boxes.append([xmin, ymin, xmax, ymax])
