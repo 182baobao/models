@@ -19,21 +19,31 @@ from beer.eval_tool.predict_images import parse_args
 from beer.eval_tool.predict_images import compute_accuracy
 from beer.eval_tool.predict_images import evaluate_predictions
 
+
 def _merge_region_prediction(boxes, scores, classes, percent):
     idx = np.argsort(scores)
     boxes = boxes[idx]
     scores = scores[idx]
     classes = classes[idx]
-    _boxes = []
-    _scores = []
-    _classes = []
+    _boxes = [boxes[0]]
+    _scores = [scores[0]]
+    _classes = [classes[0]]
     for box, score_, cls in zip(boxes, scores, classes):
-        is_add = False
+        is_add = True
         for _box, _sc, _cls in zip(_boxes, _scores, _classes):
-            if is_overlap(box,_box):
+            if is_overlap(box, _box):
                 src_area = min((_box[2] - _box[0]) * (_box[3] - _box[1]),
                                (box[2] - box[0]) * (box[3] - box[1]))
                 area = get_overlap_area(_box, box)
+                if area / src_area > percent:
+                    is_add = False
+                    break
+        if is_add:
+            _boxes.append(box)
+            _scores.append(score_)
+            _classes.append(cls)
+    return _boxes, _classes, _scores
+
 
 def _merge_region_box_to_global(info, boxes, scores, classes, score, percent):
     objects = info['objects']
@@ -129,34 +139,23 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
                     _boxes += boxes
                     _classes += classes
                     _scores += scores
-                image = Image.open(img_path)
-                info = read_img_xml_as_eval_info(img_path, xml_path[:-1])
-                image_np = np.array(image).astype(np.uint8)
-                image_np_expanded = np.expand_dims(image_np, axis=0)
-                image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-                boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-                scores = detection_graph.get_tensor_by_name('detection_scores:0')
-                classes = detection_graph.get_tensor_by_name('detection_classes:0')
-                num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-                (boxes, scores, classes, num_detections) = sess.run(
-                    [boxes, scores, classes, num_detections],
-                    feed_dict={
-                        image_tensor: image_np_expanded
-                    })
-                boxes = np.squeeze(boxes)
-                classes = np.squeeze(classes).astype(np.int32)
-                scores = np.squeeze(scores)
+                _boxes, _scores, _classes = _merge_region_prediction(_boxes, _scores, _classes, percent)
+                _boxes, _scores, _classes = _merge_region_box_to_global(info, _boxes, _scores, _classes, score, percent)
+                _boxes = np.array(_boxes)
+                _classes = np.array(_classes).astype(np.int32)
+                _scores = np.array(_scores)
+                image = info['image']
                 vis_util.visualize_boxes_and_labels_on_image_array(
-                    image_np,
-                    boxes,
-                    classes,
-                    scores,
+                    image,
+                    _boxes,
+                    _classes,
+                    _scores,
                     category_index,
                     use_normalized_coordinates=True,
                     line_thickness=5)
-                pic = Image.fromarray(image_np)
+                pic = Image.fromarray(image)
                 pic.save(os.path.join(output_root, '{}.jpg'.format(idx)))
-                gt_num, true_pre, pre_objects = evaluate_predictions(classes, boxes, scores, info)
+                gt_num, true_pre, pre_objects = evaluate_predictions(_classes, _boxes, _scores, info)
                 with open(os.path.join(root, 'gt_pre{}-{}.txt'.format(score, percent)), 'a') as txt_file:
                     print('{} {} {}'.format(idx, gt_num, true_pre), file=txt_file)
                 write_predictions_result(info, pre_objects, os.path.join(output_root, '{}.xml'.format(idx)))
