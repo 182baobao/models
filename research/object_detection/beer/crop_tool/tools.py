@@ -153,16 +153,16 @@ class ImageListCropper(SubImageCropper):
         self._objects = []
 
     def _get_sub_image(self, x, y):
-        h_list = list(range(y, y + self.cropped_size[1]))
-        w_list = list(range(x, x + self.cropped_size[0]))
+        h_list = list(range(y, y + self.cropped_size[1] + 1))
+        w_list = list(range(x, x + self.cropped_size[0] + 1))
         output_objects = []
         for ob in self._objects:
             if (ob[1] in w_list) and (ob[3] in w_list) and (
                     ob[2] in h_list) and (ob[4] in h_list):
                 output_objects.append(
                     [ob[0], ob[1] - x, ob[2] - y, ob[3] - x, ob[4] - y])
-            elif (ob[1] < w_list[0]) or (ob[3] > w_list[-1]) or (
-                    ob[2] < h_list[0]) or (ob[4] > h_list[-1]):
+            elif (ob[3] < w_list[0]) or (ob[1] > w_list[-1]) or (
+                    ob[4] < h_list[0]) or (ob[2] > h_list[-1]):
                 continue
             else:
                 xmin = ob[1] if (ob[1] in w_list) else w_list[0]

@@ -59,7 +59,7 @@ def process_all(lists, output_root):
         if not os.path.exists(out_root):
             os.makedirs(out_root)
         cropper = ImageListCropper(img_path, xml_path, out_root,
-                                   cropped_size=(300, 300), stride=(75, 75))
+                                   cropped_size=(320, 320), stride=(80, 80))
         cropper.update(output_root + '/break.txt')
 
 
