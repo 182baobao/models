@@ -90,16 +90,16 @@ def _traverse_file(path, lists, sets):
     return lists, sets
 
 
-def create_train_val_list(data_root, output_root):
+def create_train_val_list(data_root, output_root, postfix=''):
     lists = []
     sets = {}
     lists, sets = _traverse_file(data_root, lists, sets)
     np.random.shuffle(lists)
     train = lists[:int(0.95 * len(lists))]
     val = lists[int(0.95 * len(lists)):]
-    train_path = os.path.join(output_root, 'train_list.txt')
+    train_path = os.path.join(output_root, 'train{}_list.txt'.format(postfix))
     write_file(train_path, train)
-    val_path = os.path.join(output_root, 'val_list.txt')
+    val_path = os.path.join(output_root, 'val{}_list.txt'.format(postfix))
     write_file(val_path, val)
     return lists, sets
 

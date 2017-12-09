@@ -1,6 +1,6 @@
-from beer.crop_tools.create_lists import create_train_val_list
-from beer.crop_tools.create_lists import create_file_list
-from beer.crop_tools.tools import ImageListCropper
+from beer.crop_tool.create_lists import create_train_val_list
+from beer.crop_tool.create_lists import create_file_list
+from beer.crop_tool.tools import ImageListCropper
 
 import os
 import argparse
@@ -27,6 +27,12 @@ def parse_args():
         help='dataset root path',
         default=os.path.join(os.getcwd(), 'data', 'beer'),
         type=str)
+    parser.add_argument(
+        '--postfix',
+        dest='postfix',
+        help='postfix to file',
+        default='',
+        type=str)
     args = parser.parse_args()
     return args
 
@@ -52,22 +58,25 @@ def process_all(lists, output_root):
                                 '{:08}'.format(count))
         if not os.path.exists(out_root):
             os.makedirs(out_root)
-        cropper = ImageListCropper(img_path, xml_path, out_root)
+        cropper = ImageListCropper(img_path, xml_path, out_root,
+                                   cropped_size=(300, 300), stride=(75, 75))
         cropper.update(output_root + '/break.txt')
 
 
 def _make_data(args):
+    train = 'train{}'.format(args.postfix)
+    val = 'val{}'.format(args.postfix)
     origin_data = os.path.join(args.root_path, args.dataset)
     output_data = os.path.join(args.root_path, args.target)
-    create_train_val_list(origin_data, args.root_path)
-    train_list = read_file(os.path.join(args.root_path, 'train_list.txt'))
-    train_path = os.path.join(output_data, 'train')
+    create_train_val_list(origin_data, args.root_path, args.postfix)
+    train_list = read_file(os.path.join(args.root_path, '{}_list.txt'.format(train)))
+    train_path = os.path.join(output_data, train)
     process_all(train_list, train_path)
-    create_file_list(train_path, os.path.join(args.root_path, 'train.txt'))
-    val_list = read_file(os.path.join(args.root_path, 'val_list.txt'))
-    val_path = os.path.join(output_data, 'val')
+    create_file_list(train_path, os.path.join(args.root_path, '{}.txt'.format(train)))
+    val_list = read_file(os.path.join(args.root_path, '{}_list.txt'.format(val)))
+    val_path = os.path.join(output_data, val)
     process_all(val_list, val_path)
-    create_file_list(val_path, os.path.join(args.root_path, 'val.txt'))
+    create_file_list(val_path, os.path.join(args.root_path, '{}.txt'.format(val)))
 
 
 if __name__ == '__main__':

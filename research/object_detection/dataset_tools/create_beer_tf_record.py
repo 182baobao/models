@@ -39,6 +39,7 @@ from object_detection.utils import label_map_util
 flags = tf.app.flags
 flags.DEFINE_string('data_dir', '',
                     'Root directory to raw PASCAL VOC dataset.')
+flags.DEFINE_string('postfix', '', 'postfix of dataset')
 flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                     'merged set.')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
@@ -149,7 +150,7 @@ def main(_):
     data_dir = FLAGS.data_dir
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
     label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
-    examples_path = os.path.join(data_dir, FLAGS.set + '.txt')
+    examples_path = os.path.join(data_dir, FLAGS.set + '{}.txt'.format(FLAGS.postfix))
     examples_list = dataset_util.read_examples_list(examples_path)
     for idx, example in enumerate(examples_list):
         if idx % 100 == 0:

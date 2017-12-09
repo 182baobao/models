@@ -3,8 +3,8 @@ import os
 from beer.eval_tool.tools import read_img_xml_as_eval_info
 from beer.eval_tool.detector import BeerDetector
 from beer.eval_tool.tools import compute_mean_average_precision
-from beer.crop_tools.create_lists import create_file_list
-from beer.crop_tools.tools import ImageCropper
+from beer.crop_tool.create_lists import create_file_list
+from beer.crop_tool.tools import ImageListCropper
 
 import argparse
 
@@ -49,7 +49,7 @@ def process_all(lists, output_root, pd_file):
         if not os.path.exists(out_root):
             os.makedirs(out_root)
         out_file_root = os.path.join(output_root, '{:04}'.format(count // 1000))
-        cropper = ImageCropper(img_path, xml_path, out_root)
+        cropper = ImageListCropper(img_path, xml_path, out_root)
         cropper.update(output_root + '/break.txt')
         images, _ = create_file_list(out_root, out_file_root + '/img.txt')
         img_list = list(map(lambda x: x.split('&!&')[0], images))

@@ -60,7 +60,7 @@ class SubImageCropper(object):
                  cropped_size=(416, 416),
                  stride=(104, 104)):
         self._image = cv2.imread(image_path)
-        self._cropped_size = cropped_size
+        self._cropped_size = list(cropped_size)
         self._widths = []
         self._in_widths = []
         self._heights = []
@@ -85,7 +85,7 @@ class SubImageCropper(object):
     def _preprocess(self, *args, **kwargs):
         if len(args) > 0 or len(kwargs) > 0:
             raise ValueError('no need parameters !')
-        return self._image.shape < 2
+        return len(self._image.shape) < 2
 
     @property
     def cropped_size(self):
@@ -122,8 +122,8 @@ class ImageDictCropper(SubImageCropper):
         self._image_dict = {}
 
     def _get_sub_image(self, x, y):
-        xmax = x + self.cropped_size[0] + 1
-        ymax = y + self.cropped_size[1] + 1
+        xmax = x + self.cropped_size[0]
+        ymax = y + self.cropped_size[1]
         sub_image = self.image[y:ymax, x:xmax, :]
         self._image_dict['{}_{}'.format(x, y)] = sub_image
 
@@ -133,7 +133,7 @@ class ImageDictCropper(SubImageCropper):
 
 class ImageListCropper(SubImageCropper):
     """
-    crop_tools the beer image dataset
+    crop_tool the beer image dataset
     """
 
     def __init__(self,
@@ -153,8 +153,8 @@ class ImageListCropper(SubImageCropper):
         self._objects = []
 
     def _get_sub_image(self, x, y):
-        h_list = list(range(y, y + self.cropped_size[1] + 1))
-        w_list = list(range(x, x + self.cropped_size[0] + 1))
+        h_list = list(range(y, y + self.cropped_size[1]))
+        w_list = list(range(x, x + self.cropped_size[0]))
         output_objects = []
         for ob in self._objects:
             if (ob[1] in w_list) and (ob[3] in w_list) and (
@@ -219,7 +219,7 @@ class ImageListCropper(SubImageCropper):
 
 # class ImageCropper(object):
 #     """
-#     crop_tools the beer image dataset
+#     crop_tool the beer image dataset
 #     """
 #
 #     def __init__(self,

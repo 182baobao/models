@@ -9,7 +9,7 @@ from functools import reduce
 
 from utils import visualization_utils as vis_util
 
-from beer.crop_tools.create_lists import create_file_list
+from beer.crop_tool.create_lists import create_file_list
 from beer.eval_tool.tools import read_img_xml_as_eval_info
 from beer.eval_tool.tools import is_overlap
 from beer.eval_tool.tools import get_overlap_area
@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument(
         '--image-path',
         dest='image_path',
-        help='path of image to use, split by .',
+        help='path of image to use in root, split by .',
         default='',
         type=str)
     parser.add_argument(
@@ -48,7 +48,7 @@ def parse_args():
         '--score',
         dest='score',
         help='score threshold',
-        default=0.15,
+        default=0.35,
         type=float)
     parser.add_argument(
         '--percent',
@@ -58,7 +58,7 @@ def parse_args():
         type=float)
     parser.add_argument(
         '--image-list',
-        dest='image_lists',
+        dest='image_list',
         help='path of image to use',
         default='',
         type=str)
@@ -86,10 +86,11 @@ def evaluate_predictions(_classes, _boxes, _scores, _info, _score, _percent):
     for cls, box, score in zip(_classes, _boxes, _scores):
         if score > _score:
             for _ob in objects_:
-                if not is_overlap([box[1], box[0], box[3], box[2]], _ob[1:]):
-                    src_area = min((box[2] - box[0]) * (box[3] - box[1]), (_ob[3] - _ob[1]) * (_ob[4] - _ob[2]))
+                if is_overlap([box[1], box[0], box[3], box[2]], _ob[1:]):
+                    src_area = min((box[2] - box[0]) * (box[3] - box[1]),
+                                   (_ob[3] - _ob[1]) * (_ob[4] - _ob[2]))
                     area = get_overlap_area([box[1], box[0], box[3], box[2]], _ob[1:])
-                    if (area / src_area > _percent) and (cls == (_ob[0] + 1)):
+                    if ((area / src_area) > _percent) and (cls == (_ob[0] + 1)):
                         _true_pre += 1
                         _pre_objects.append([cls, *box, score])
                     break
@@ -173,8 +174,9 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
             for idx, paths in enumerate(image_lists):
                 print('predicting {} of {} images'.format(idx, len(image_lists)))
                 img_path, xml_path = paths.split('&!&')
+                xml_path = xml_path if xml_path[-1] == 'l' else xml_path[:-1]
                 image = Image.open(img_path)
-                info = read_img_xml_as_eval_info(img_path, xml_path[:-1])
+                info = read_img_xml_as_eval_info(img_path, xml_path)
                 image_np = np.array(image).astype(np.uint8)
                 image_np_expanded = np.expand_dims(image_np, axis=0)
                 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
@@ -200,7 +202,7 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
                     line_thickness=5)
                 pic = Image.fromarray(image_np)
                 pic.save(os.path.join(output_root, '{}.jpg'.format(idx)))
-                gt_num, true_pre, pre_objects = evaluate_predictions(classes, boxes, scores, info)
+                gt_num, true_pre, pre_objects = evaluate_predictions(classes, boxes, scores, info, score, percent)
                 with open(os.path.join(root, 'gt_pre{}-{}.txt'.format(score, percent)), 'a') as txt_file:
                     print('{} {} {}'.format(idx, gt_num, true_pre), file=txt_file)
                 write_predictions_result(info, pre_objects, os.path.join(output_root, '{}.xml'.format(idx)))
@@ -211,7 +213,7 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
 def process():
     args = parse_args()
     if args.image_list != '':
-        image_lists = read_file(args.image_lists)
+        image_lists = read_file(args.image_list)
     else:
         image_root = reduce(lambda x, y: os.path.join(x, y), args.image_path.split('.'), args.root)
         image_lists, _ = create_file_list(image_root)
