@@ -49,8 +49,7 @@ flags = tf.app.flags
 flags.DEFINE_string('data_dir', '',
                     'Root directory to raw PASCAL VOC dataset.')
 flags.DEFINE_string('postfix', '', 'postfix of dataset')
-flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
-                    'merged set.')
+flags.DEFINE_string('set', 'train', 'Convert training set, validation set.')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/beer_label_map.pbtxt',
                     'Path to label map proto')
