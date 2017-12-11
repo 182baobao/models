@@ -2,22 +2,10 @@ import os
 import numpy as np
 import xml.etree.ElementTree as ET
 
-
-def write_file(file_path, file_list1, file_list2=None):
-    if file_list2 is None:
-        with open(file_path, 'w') as file:
-            for string in file_list1:
-                print(string, file=file)
-    else:
-        if len(file_list1) == len(file_list2):
-            with open(file_path, 'w') as file:
-                for string1, string2 in zip(file_list1, file_list2):
-                    print(string1 + ' ' + string2, file=file)
-        else:
-            return
+from beer.utils.file_io import write_file
 
 
-def _get_file_name(filename):
+def get_file_name(filename):
     (_, temp_filename) = os.path.split(filename)
     (shot_name, _) = os.path.splitext(temp_filename)
     return shot_name
@@ -73,7 +61,7 @@ def _traverse_file(path, lists, sets):
             if (not good) or (len(sets_) == 0):
                 continue
             sets = _merge_dict(sets, sets_)
-            image_path = os.path.join(path, _get_file_name(f))
+            image_path = os.path.join(path, get_file_name(f))
             if os.path.exists(image_path + '.jpg'):
                 img_path = image_path + '.jpg'
             elif os.path.exists(image_path + '.png'):
@@ -113,14 +101,23 @@ def create_file_list(data_root, output_file=''):
     return lists, sets
 
 
-if __name__ == '__main__':
-    out_root = '/home/admins/data/beer_data/data'
-    lists, sets = create_train_val_list(out_root,
-                                        os.path.join(out_root, 'files.txt'))
+def count_instance_number(root, output_file):
+    lists, sets = create_file_list(root)
     l_name = []
     l_num = []
-    print(len(sets))
     for key, value in sets.items():
         print('{:30}\t {}'.format(key, value))
         l_name.append(key)
         l_num.append(value)
+    l_name = np.array(l_name)
+    l_num = np.array(l_num)
+    idx = np.argsort(l_num)
+    l_num = l_num[idx]
+    l_name = l_name[idx]
+    output_set = np.hstack((l_num, l_name))
+    np.save(output_file, output_set)
+
+
+if __name__ == '__main__':
+    out_root = '/home/admins/data/beer_data/data'
+    count_instance_number(out_root, os.path.join(out_root, 'label.npy'))

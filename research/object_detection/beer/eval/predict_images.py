@@ -9,12 +9,13 @@ from functools import reduce
 
 from utils import visualization_utils as vis_util
 
-from beer.crop_tool.create_lists import create_file_list
-from beer.eval_tool.tools import read_img_xml_as_eval_info
-from beer.eval_tool.tools import is_overlap
-from beer.eval_tool.tools import get_overlap_area
-from beer.eval_tool.tools import get_label_from_pd_file
-from beer.file_tool.txt_file import read_file
+from beer.data.create_lists import create_file_list
+from beer.data.tools import add_element
+from beer.eval.tools import read_img_xml_as_eval_info
+from beer.eval.tools import is_overlap
+from beer.eval.tools import get_overlap_area
+from beer.utils.file_io import read_file
+from beer.utils.file_io import get_label_from_pd_file
 
 
 def parse_args():
@@ -98,16 +99,12 @@ def evaluate_predictions(_classes, _boxes, _scores, _info, _score, _percent):
 
 
 def write_predictions_result(_info, _pre_objects, _file_name):
-    def _add_element(_root, _name, _value):
-        sub_element = ET.SubElement(_root, _name)
-        sub_element.text = _value
-
     root = ET.Element('annotation')
     size = ET.SubElement(root, 'size')
     shape = _info['shape']
-    _add_element(size, 'height', str(shape[0]))
-    _add_element(size, 'width', str(shape[1]))
-    _add_element(size, 'depth', '3')
+    add_element(size, 'height', str(shape[0]))
+    add_element(size, 'width', str(shape[1]))
+    add_element(size, 'depth', '3')
     origin = ET.SubElement(root, 'origin')
     objects_ = _info['objects']
     class_names = [
@@ -118,26 +115,26 @@ def write_predictions_result(_info, _pre_objects, _file_name):
     ]
     for ob in objects_:
         ob_xml = ET.SubElement(origin, 'object')
-        _add_element(ob_xml, 'name', class_names[ob[0]])
-        _add_element(ob_xml, 'difficult', '0')
+        add_element(ob_xml, 'name', class_names[ob[0]])
+        add_element(ob_xml, 'difficult', '0')
         bndbox = ET.SubElement(ob_xml, 'bndbox')
-        _add_element(bndbox, 'xmin', str(int(ob[1] * shape[1])))
-        _add_element(bndbox, 'ymin', str(int(ob[2] * shape[0])))
-        _add_element(bndbox, 'xmax', str(int(ob[3] * shape[1])))
-        _add_element(bndbox, 'ymax', str(int(ob[4] * shape[0])))
+        add_element(bndbox, 'xmin', str(int(ob[1] * shape[1])))
+        add_element(bndbox, 'ymin', str(int(ob[2] * shape[0])))
+        add_element(bndbox, 'xmax', str(int(ob[3] * shape[1])))
+        add_element(bndbox, 'ymax', str(int(ob[4] * shape[0])))
 
     prediction = ET.SubElement(root, 'prediction')
     print(len(_pre_objects))
     for ob in _pre_objects:
         ob_xml = ET.SubElement(prediction, 'object')
-        _add_element(ob_xml, 'name', class_names[ob[0] - 1])
-        _add_element(ob_xml, 'score', str(ob[-1]))
-        _add_element(ob_xml, 'difficult', '0')
+        add_element(ob_xml, 'name', class_names[ob[0] - 1])
+        add_element(ob_xml, 'score', str(ob[-1]))
+        add_element(ob_xml, 'difficult', '0')
         bndbox = ET.SubElement(ob_xml, 'bndbox')
-        _add_element(bndbox, 'xmin', str(int(ob[2] * shape[1])))
-        _add_element(bndbox, 'ymin', str(int(ob[1] * shape[0])))
-        _add_element(bndbox, 'xmax', str(int(ob[4] * shape[1])))
-        _add_element(bndbox, 'ymax', str(int(ob[3] * shape[0])))
+        add_element(bndbox, 'xmin', str(int(ob[2] * shape[1])))
+        add_element(bndbox, 'ymin', str(int(ob[1] * shape[0])))
+        add_element(bndbox, 'xmax', str(int(ob[4] * shape[1])))
+        add_element(bndbox, 'ymax', str(int(ob[3] * shape[0])))
     tree = ET.ElementTree(root)
     tree.write(_file_name)
 
@@ -202,16 +199,17 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
                     line_thickness=5)
                 pic = Image.fromarray(image_np)
                 pic.save(os.path.join(output_root, '{}.jpg'.format(idx)))
-                gt_num, true_pre, pre_objects = evaluate_predictions(classes, boxes, scores, info, score, percent)
+                gt_num, true_pre, pre_objects = evaluate_predictions(
+                    classes, boxes, scores, info, score, percent)
                 with open(os.path.join(root, 'gt_pre{}-{}.txt'.format(score, percent)), 'a') as txt_file:
                     print('{} {} {}'.format(idx, gt_num, true_pre), file=txt_file)
-                write_predictions_result(info, pre_objects, os.path.join(output_root, '{}.xml'.format(idx)))
+                write_predictions_result(info, pre_objects,
+                                         os.path.join(output_root, '{}.xml'.format(idx)))
                 print('{} elapsed time: {:.3f}s'.format(time.ctime(),
                                                         time.time() - start_time))
 
 
 def process():
-    args = parse_args()
     if args.image_list != '':
         image_lists = read_file(args.image_list)
     else:
@@ -230,4 +228,5 @@ def process():
 
 
 if __name__ == '__main__':
+    args = parse_args()
     process()

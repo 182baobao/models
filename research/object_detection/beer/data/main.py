@@ -1,9 +1,10 @@
-from beer.crop_tool.create_lists import create_train_val_list
-from beer.crop_tool.create_lists import create_file_list
-from beer.crop_tool.tools import ImageListCropper
-
 import os
 import argparse
+
+from beer.data.create_lists import create_train_val_list
+from beer.data.create_lists import create_file_list
+from beer.data.tools import ImageListCropper
+from beer.utils.file_io import read_file
 
 
 def parse_args():
@@ -19,7 +20,7 @@ def parse_args():
         '--target',
         dest='target',
         help='output list file',
-        default='crop',
+        default='data',
         type=str)
     parser.add_argument(
         '--root',
@@ -33,19 +34,7 @@ def parse_args():
         help='postfix to file',
         default='',
         type=str)
-    args = parser.parse_args()
-    return args
-
-
-def read_file(root):
-    info = []
-    file = open(root, 'rt')
-    while True:
-        string = file.readline()
-        if not string:
-            break
-        info.append(string[:-1])
-    return info
+    return parser.parse_args()
 
 
 def process_all(lists, output_root):
@@ -63,7 +52,7 @@ def process_all(lists, output_root):
         cropper.update(output_root + '/break.txt')
 
 
-def _make_data(args):
+def _make_data():
     train = 'train{}'.format(args.postfix)
     val = 'val{}'.format(args.postfix)
     origin_data = os.path.join(args.root_path, args.dataset)
@@ -81,4 +70,4 @@ def _make_data(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    _make_data(args)
+    _make_data()

@@ -306,7 +306,10 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
             # This provides a large performance boost on GPU. See
             # https://www.tensorflow.org/performance/performance_guide#data_formats
             inputs = tf.transpose(inputs, [0, 3, 1, 2])
-
+        inputs = tf.layers.batch_normalization(
+            inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
+            momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
+            scale=True, training=is_training, fused=True)
         inputs = conv2d_fixed_padding(
             inputs=inputs, filters=start_filters, kernel_size=5, strides=2,
             data_format=data_format)

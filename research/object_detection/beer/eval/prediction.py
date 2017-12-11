@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from utils import label_map_util
 from utils import visualization_utils as vis_util
 
-PATH_TEST_IMAGE = '/home/admins/cmake/mxnet-yolo/data/beer/crop/train/0006/00006838/480_720.jpg'
+PATH_TEST_IMAGE = '/home/admins/cmake/mxnet-yolo/data/beer/data/train/0006/00006838/480_720.jpg'
 PATH_TO_CKPT = '/home/admins/cmake/models/research/object_detection/data/ssd_mobilenet_v1_coco_11_06_2017/0/frozen_inference_graph.pb'
 PATH_TO_LABELS = '/home/admins/cmake/models/research/object_detection/data/beer_label_map.pbtxt'
 NUM_CLASSES = 20

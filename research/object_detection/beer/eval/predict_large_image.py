@@ -7,17 +7,17 @@ from functools import reduce
 
 from utils import visualization_utils as vis_util
 
-from beer.file_tool.txt_file import read_file
-from beer.crop_tool.create_lists import create_file_list
-from beer.crop_tool.tools import ImageDictCropper
-from beer.eval_tool.tools import read_img_xml_as_eval_info
-from beer.eval_tool.tools import is_overlap
-from beer.eval_tool.tools import get_overlap_area
-from beer.eval_tool.tools import get_label_from_pd_file
-from beer.eval_tool.predict_images import parse_args
-from beer.eval_tool.predict_images import write_predictions_result
-from beer.eval_tool.predict_images import evaluate_predictions
-from beer.eval_tool.predict_images import compute_accuracy
+from beer.utils.file_io import read_file
+from beer.utils.file_io import get_label_from_pd_file
+from beer.data.create_lists import create_file_list
+from beer.data.tools import ImageDictCropper
+from beer.eval.tools import read_img_xml_as_eval_info
+from beer.eval.tools import is_overlap
+from beer.eval.tools import get_overlap_area
+from beer.eval.predict_images import parse_args
+from beer.eval.predict_images import write_predictions_result
+from beer.eval.predict_images import evaluate_predictions
+from beer.eval.predict_images import compute_accuracy
 
 
 def _merge_region_prediction(boxes, scores, classes, percent):
@@ -140,7 +140,6 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
 
 
 def process():
-    args = parse_args()
     if args.image_list != '':
         image_lists = read_file(args.image_list)
     else:
@@ -159,4 +158,5 @@ def process():
 
 
 if __name__ == '__main__':
+    args = parse_args()
     process()
