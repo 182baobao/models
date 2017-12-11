@@ -14,23 +14,32 @@
 # ==============================================================================
 r"""Convert raw PASCAL dataset to TFRecord for object_detection.
 
-Example usage:
-    python object_detection/dataset_tools/create_pascal_tf_record.py \
-        --data_dir=/home/user/VOCdevkit \
-        --year=VOC2012 \
-        --output_path=/home/user/pascal.record
+Example usage in shell file:
+    #!/usr/bin/env bash
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    export PYTHONPATH=$PYTHONPATH:$DIR/../../
+    export PYTHONPATH=$PYTHONPATH:$DIR/../../slim
+    export PYTHONPATH=$PYTHONPATH:$DIR/../../object_detection
+
+    POSTFIX=""
+    DATA=/home/admins/data/beer_data
+
+    echo "generating train dataset ..."
+    python $DIR/../../object_detection/dataset_tools/create_beer_tf_record.py \
+    --data_dir $DATA \
+    --set train \
+    --postfix $POSTFIX \
+    --output_path $DATA/train.record \
+    --label_map_path $DIR/../../object_detection/data/beer_label_map.pbtxt
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import hashlib
-import io
 import logging
 import os
-
 import xml.etree.ElementTree as ET
-import PIL.Image
 import tensorflow as tf
 
 from object_detection.utils import dataset_util

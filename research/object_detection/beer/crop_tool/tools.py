@@ -8,7 +8,7 @@ def _add_element(_root, _name, _value):
     sub_element.text = _value
 
 
-def _read_xml(file_path, image_size):
+def read_xml(file_path, image_size):
     tree = ET.parse(file_path)
     root = tree.getroot()
     size = root.find('size')
@@ -17,7 +17,7 @@ def _read_xml(file_path, image_size):
     break_instance = True
     objects = []
 
-    def __read_xml(changed=False):
+    def _read_xml(changed=False):
         for obj in root.iter('object'):
             cls_name = obj.find('name').text
             if cls_name not in [
@@ -43,10 +43,10 @@ def _read_xml(file_path, image_size):
                 objects.append([cls_name, xmin, ymin, xmax, ymax])
 
     if (image_size[0] == height) and (image_size[1] == width):
-        __read_xml()
+        _read_xml()
         break_instance = False
     elif (image_size[0] == width) and (image_size[1] == height):
-        __read_xml(True)
+        _read_xml(True)
         break_instance = False
     return objects, break_instance
 
@@ -206,7 +206,7 @@ class ImageListCropper(SubImageCropper):
         tree.write(file_name + '.xml')
 
     def _preprocess(self, break_image=''):
-        objects, break_instance = _read_xml(self._xml_path,
+        objects, break_instance = read_xml(self._xml_path,
                                             self.image.shape)
         self._objects = objects[:]
         if break_instance or (len(self._objects) == 0):
