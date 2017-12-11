@@ -12,8 +12,7 @@ flags.DEFINE_string('postfix', '', 'postfix of dataset')
 flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                     'merged set.')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
-flags.DEFINE_string('label_map_path', 'data/beer_label_map.pbtxt',
-                    'Path to label map proto')
+flags.DEFINE_string('image_size', 112, 'size of input image')
 flags.DEFINE_boolean('ignore_difficult_instances', False, 'Whether to ignore '
                      'difficult instances')
 FLAGS = flags.FLAGS
@@ -34,7 +33,7 @@ def main(_):
             logging.info('On image %d of %d', idx, len(examples_list))
         img_path, label = example.split('&!&')
         img = Image.open(img_path)
-        img = img.resize((112, 112))
+        img = img.resize((FLAGS.image_size, FLAGS.image_size))
         img_raw = img.tobytes()
         example = tf.train.Example(features=tf.train.Features(feature={
             'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[label])),

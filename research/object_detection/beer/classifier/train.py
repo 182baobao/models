@@ -1,184 +1,266 @@
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""Runs a ResNet model on the ImageNet dataset."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import time
-import math
-import numpy as np
-from PIL import Image
+import argparse
+import os
 import tensorflow as tf
 
-# Basic model parameters as external flags.
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('max_steps', 2000, 'Number of steps to run trainer.')
-flags.DEFINE_integer('hidden1', 128, 'Number of units in hidden layer 1.')
-flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
-flags.DEFINE_integer('batch_size', 4, 'Batch size.  '
-                                      'Must divide evenly into the dataset sizes.')
-flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
-flags.DEFINE_boolean('fake_data', False, 'If true, uses fake data '
-                                         'for unit testing.')
-NUM_CLASSES = 2
-IMAGE_SIZE = 28
-CHANNELS = 3
-IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE * CHANNELS
+import vgg_preprocessing
+
+from beer.classifier.resnet_model import imagenet_resnet_v2
 
 
-def inference(images, hidden1_units, hidden2_units):
-    # Hidden 1
-    with tf.name_scope('hidden1'):
-        weights = tf.Variable(
-            tf.truncated_normal([IMAGE_PIXELS, hidden1_units],
-                                stddev=1.0 / math.sqrt(float(IMAGE_PIXELS))),
-            name='weights')
-        biases = tf.Variable(tf.zeros([hidden1_units]),
-                             name='biases')
-        hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
-    # Hidden 2
-    with tf.name_scope('hidden2'):
-        weights = tf.Variable(
-            tf.truncated_normal([hidden1_units, hidden2_units],
-                                stddev=1.0 / math.sqrt(float(hidden1_units))),
-            name='weights')
-        biases = tf.Variable(tf.zeros([hidden2_units]),
-                             name='biases')
-        hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
-    # Linear
-    with tf.name_scope('softmax_linear'):
-        weights = tf.Variable(
-            tf.truncated_normal([hidden2_units, NUM_CLASSES],
-                                stddev=1.0 / math.sqrt(float(hidden2_units))),
-            name='weights')
-        biases = tf.Variable(tf.zeros([NUM_CLASSES]),
-                             name='biases')
-        logits = tf.matmul(hidden2, weights) + biases
-    return logits
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--data_dir', type=str, default='',
+        help='The directory where the ImageNet input data is stored.')
+    parser.add_argument(
+        '--model_dir', type=str, default='',
+        help='The directory where the model will be stored.')
+    parser.add_argument(
+        '--resnet_size', type=int, default=34, choices=[18, 34, 50, 101, 152, 200],
+        help='The size of the ResNet model to use.')
+    parser.add_argument(
+        '--image_size', type=int, default=112,
+        help='The size of the ResNet model to use.')
+    parser.add_argument(
+        '--class_num', type=int, default=9,
+        help='The size of the ResNet model to use.')
+    parser.add_argument(
+        '--train_epochs', type=int, default=100,
+        help='The number of epochs to use for training.')
+    parser.add_argument(
+        '--train_number', type=int, default=10000,
+        help='The number of epochs to use for training.')
+    parser.add_argument(
+        '--epochs_per_eval', type=int, default=1,
+        help='The number of training epochs to run between evaluations.')
+    parser.add_argument(
+        '--batch_size', type=int, default=32,
+        help='Batch size for training and evaluation.')
+    parser.add_argument(
+        '--data_format', type=str, default='channels_last',
+        choices=['channels_first', 'channels_last'],
+        help='A flag to override the data format used in the model. channels_first '
+             'provides a performance boost on GPU but is not always compatible '
+             'with CPU. If left unspecified, the data format will be chosen '
+             'automatically based on whether TensorFlow was built for CPU or GPU.')
+    args = parser.parse_args()
+    return args
 
 
-def cal_loss(logits, labels):
-    labels = tf.to_int64(labels)
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        logits, labels, name='xentropy')
-    loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
-    return loss
+_NUM_CHANNELS = 3
+_MOMENTUM = 0.9
+_WEIGHT_DECAY = 1e-4
+_FILE_SHUFFLE_BUFFER = 1024
+_SHUFFLE_BUFFER = 1500
+
+_NUM_IMAGES = {
+    'train': 1281167,
+    'validation': 50000,
+}
 
 
-def training(loss, learning_rate):
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-    global_step = tf.Variable(0, name='global_step', trainable=False)
-    train_op = optimizer.minimize(loss, global_step=global_step)
-    return train_op
+def file_names(is_training, data_dir):
+    """Return file_names for dataset."""
+    if is_training:
+        return [
+            os.path.join(data_dir, 'train-%05d-of-01024' % i)
+            for i in range(1024)]
+    else:
+        return [
+            os.path.join(data_dir, 'validation-%05d-of-00128' % i)
+            for i in range(128)]
 
 
-def evaluation(logits, labels):
-    correct = tf.nn.in_top_k(logits, labels, 1)
-    return tf.reduce_sum(tf.cast(correct, tf.int32))
-
-
-def placeholder_inputs(batch_size):
-    images_placeholder = tf.placeholder(tf.float32, shape=(batch_size, IMAGE_PIXELS))
-    labels_placeholder = tf.placeholder(tf.int32, shape=(batch_size))
-    return images_placeholder, labels_placeholder
-
-
-def fill_feed_dict(images_feed, labels_feed, images_pl, labels_pl):
-    feed_dict = {
-        images_pl: images_feed,
-        labels_pl: labels_feed,
+def record_parser(value, is_training):
+    """Parse an ImageNet record from `value`."""
+    keys_to_features = {
+        'img_raw':
+            tf.FixedLenFeature((), tf.string, default_value=''),
+        'label':
+            tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
     }
-    return feed_dict
+
+    parsed = tf.parse_single_example(value, keys_to_features)
+
+    image = tf.image.decode_image(
+        tf.reshape(parsed['img_raw'], shape=[]),
+        _NUM_CHANNELS)
+    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+
+    image = vgg_preprocessing.preprocess_image(
+        image=image,
+        output_height=FLAGS.image_size,
+        output_width=FLAGS.image_size,
+        is_training=is_training)
+
+    label = tf.cast(
+        tf.reshape(parsed['label'], shape=[]),
+        dtype=tf.int32)
+
+    return image, tf.one_hot(label, FLAGS.label_size)
 
 
-def do_eval(sess,
-            eval_correct,
-            images_placeholder,
-            labels_placeholder,
-            data_set):
-    # And run one epoch of eval.
-    true_count = 0  # Counts the number of correct predictions.
-    steps_per_epoch = 4 // FLAGS.batch_size
-    num_examples = steps_per_epoch * FLAGS.batch_size
-    for step in range(steps_per_epoch):
-        feed_dict = fill_feed_dict(train_images, train_labels,
-                                   images_placeholder,
-                                   labels_placeholder)
-        true_count += sess.run(eval_correct, feed_dict=feed_dict)
-    precision = true_count / num_examples
-    print('  Num examples: %d  Num correct: %d  Precision @ 1: %0.04f' %
-          (num_examples, true_count, precision))
+def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+    """Input function which provides batches for train or eval."""
+    dataset = tf.data.Dataset.from_tensor_slices(file_names(is_training, data_dir))
+
+    if is_training:
+        dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
+
+    dataset = dataset.flat_map(tf.data.TFRecordDataset)
+    dataset = dataset.map(lambda value: record_parser(value, is_training),
+                          num_parallel_calls=5)
+    dataset = dataset.prefetch(batch_size)
+
+    if is_training:
+        # When choosing shuffle buffer sizes, larger sizes result in better
+        # randomness, while smaller sizes have better performance.
+        dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
+
+    # We call repeat after shuffling, rather than before, to prevent separate
+    # epochs from blending together.
+    dataset = dataset.repeat(num_epochs)
+    dataset = dataset.batch(batch_size)
+
+    iterator = dataset.make_one_shot_iterator()
+    images, labels = iterator.get_next()
+    return images, labels
 
 
-# Get the sets of images and labels for training, validation, and
-train_images = []
-for filename in ['01.jpg', '02.jpg', '03.jpg', '04.jpg']:
-    image = Image.open(filename)
-    image = image.resize((IMAGE_SIZE, IMAGE_SIZE))
-    train_images.append(np.array(image))
+def resnet_model_fn(features, labels, mode, params):
+    """Our model_fn for ResNet to be used with our Estimator."""
+    tf.summary.image('images', features, max_outputs=6)
 
-train_images = np.array(train_images)
-train_images = train_images.reshape(4, IMAGE_PIXELS)
+    network = imagenet_resnet_v2(
+        params['resnet_size'], FLAGS.label_size, params['data_format'])
+    logits = network(
+        inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
 
-label = [0, 1, 1, 1]
-train_labels = np.array(label)
+    predictions = {
+        'classes': tf.argmax(logits, axis=1),
+        'probabilities': tf.nn.softmax(logits, name='softmax_tensor')
+    }
 
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-def run_training():
-    # Tell TensorFlow that the model will be built into the default Graph.
-    with tf.Graph().as_default():
-        # Generate placeholders for the images and labels.
-        images_placeholder, labels_placeholder = placeholder_inputs(4)
+    # Calculate loss, which includes softmax cross entropy and L2 regularization.
+    cross_entropy = tf.losses.softmax_cross_entropy(
+        logits=logits, onehot_labels=labels)
 
-        # Build a Graph that computes predictions from the inference model.
-        logits = inference(images_placeholder,
-                           FLAGS.hidden1,
-                           FLAGS.hidden2)
+    # Create a tensor named cross_entropy for logging purposes.
+    tf.identity(cross_entropy, name='cross_entropy')
+    tf.summary.scalar('cross_entropy', cross_entropy)
 
-        # Add to the Graph the Ops for loss calculation.
-        loss = cal_loss(logits, labels_placeholder)
+    # Add weight decay to the loss. We exclude the batch norm variables because
+    # doing so leads to a small improvement in accuracy.
+    loss = cross_entropy + _WEIGHT_DECAY * tf.add_n(
+        [tf.nn.l2_loss(v) for v in tf.trainable_variables()
+         if 'batch_normalization' not in v.name])
 
-        # Add to the Graph the Ops that calculate and apply gradients.
-        train_op = training(loss, FLAGS.learning_rate)
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        # Scale the learning rate linearly with the batch size. When the batch size
+        # is 256, the learning rate should be 0.1.
+        initial_learning_rate = 0.1 * params['batch_size'] / 256
+        batches_per_epoch = _NUM_IMAGES['train'] / params['batch_size']
+        global_step = tf.train.get_or_create_global_step()
 
-        # Add the Op to compare the logits to the labels during evaluation.
-        eval_correct = evaluation(logits, labels_placeholder)
+        # Multiply the learning rate by 0.1 at 30, 60, 80, and 90 epochs.
+        boundaries = [
+            int(batches_per_epoch * epoch) for epoch in [40, 60, 80]]
+        values = [
+            initial_learning_rate * decay for decay in [1, 0.1, 0.01, 1e-3]]
+        learning_rate = tf.train.piecewise_constant(
+            tf.cast(global_step, tf.int32), boundaries, values)
 
-        # Create a saver for writing training checkpoints.
-        saver = tf.train.Saver()
+        # Create a tensor named learning_rate for logging purposes.
+        tf.identity(learning_rate, name='learning_rate')
+        tf.summary.scalar('learning_rate', learning_rate)
 
-        # Create a session for running Ops on the Graph.
-        sess = tf.Session()
+        optimizer = tf.train.MomentumOptimizer(
+            learning_rate=learning_rate,
+            momentum=_MOMENTUM)
 
-        # Run the Op to initialize the variables.
-        init = tf.initialize_all_variables()
-        sess.run(init)
+        # Batch norm requires update_ops to be added as a train_op dependency.
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            train_op = optimizer.minimize(loss, global_step)
+    else:
+        train_op = None
 
-        # And then after everything is built, start the training loop.
-        for step in range(FLAGS.max_steps):
-            start_time = time.time()
-            feed_dict = fill_feed_dict(train_images, train_labels,
-                                       images_placeholder,
-                                       labels_placeholder)
-            _, loss_value = sess.run([train_op, loss],
-                                     feed_dict=feed_dict)
-            duration = time.time() - start_time
-            if step % 100 == 0:
-                # Print status to stdout.
-                print('Step %d: loss = %.2f (%.3f sec)' % (step, loss_value, duration))
-            if (step + 1) % 1000 == 0 or (step + 1) == FLAGS.max_steps:
-                saver.save(sess, FLAGS.train_dir, global_step=step)
-                print('Training Data Eval:')
-                do_eval(sess,
-                        eval_correct,
-                        images_placeholder,
-                        labels_placeholder,
-                        train_images)
+    accuracy = tf.metrics.accuracy(
+        tf.argmax(labels, axis=1), predictions['classes'])
+    metrics = {'accuracy': accuracy}
+
+    # Create a tensor named train_accuracy for logging purposes.
+    tf.identity(accuracy[1], name='train_accuracy')
+    tf.summary.scalar('train_accuracy', accuracy[1])
+
+    return tf.estimator.EstimatorSpec(
+        mode=mode,
+        predictions=predictions,
+        loss=loss,
+        train_op=train_op,
+        eval_metric_ops=metrics)
 
 
 def main(_):
-    run_training()
+    # Using the Winograd non-fused algorithms provides a small performance boost.
+    os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+
+    # Set up a RunConfig to only save checkpoints once per training cycle.
+    run_config = tf.estimator.RunConfig().replace(save_checkpoints_steps=100)
+    resnet_classifier = tf.estimator.Estimator(
+        model_fn=resnet_model_fn, model_dir=FLAGS.model_dir, config=run_config,
+        params={
+            'resnet_size': FLAGS.resnet_size,
+            'data_format': FLAGS.data_format,
+            'batch_size': FLAGS.batch_size,
+        })
+
+    for _ in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
+        tensors_to_log = {
+            'learning_rate': 'learning_rate',
+            'cross_entropy': 'cross_entropy',
+            'train_accuracy': 'train_accuracy'
+        }
+
+        logging_hook = tf.train.LoggingTensorHook(
+            tensors=tensors_to_log, every_n_iter=50)
+
+        print('Starting a training cycle.')
+        resnet_classifier.train(
+            input_fn=lambda: input_fn(
+                True, FLAGS.data_dir, FLAGS.batch_size, FLAGS.epochs_per_eval),
+            hooks=[logging_hook])
+
+        print('Starting to evaluate.')
+        eval_results = resnet_classifier.evaluate(
+            input_fn=lambda: input_fn(False, FLAGS.data_dir, FLAGS.batch_size))
+        print(eval_results)
 
 
 if __name__ == '__main__':
+    tf.logging.set_verbosity(tf.logging.INFO)
+    FLAGS = parse_args()
     tf.app.run()

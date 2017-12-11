@@ -279,7 +279,7 @@ def cifar10_resnet_v2_generator(resnet_size, num_classes, data_format=None):
 
 
 def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
-                                 data_format=None):
+                                 data_format=None, start_filters=64):
     """Generator for ImageNet ResNet v2 models.
 
     Args:
@@ -308,7 +308,7 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
             inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
         inputs = conv2d_fixed_padding(
-            inputs=inputs, filters=64, kernel_size=5, strides=2,
+            inputs=inputs, filters=start_filters, kernel_size=5, strides=2,
             data_format=data_format)
         inputs = tf.identity(inputs, 'initial_conv')
         # inputs = tf.layers.max_pooling2d(
@@ -317,19 +317,19 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
         # inputs = tf.identity(inputs, 'initial_max_pool')
 
         inputs = block_layer(
-            inputs=inputs, filters=64, block_fn=block_fn, blocks=layers[0],
+            inputs=inputs, filters=start_filters, block_fn=block_fn, blocks=layers[0],
             strides=1, is_training=is_training, name='block_layer1',
             data_format=data_format)
         inputs = block_layer(
-            inputs=inputs, filters=128, block_fn=block_fn, blocks=layers[1],
+            inputs=inputs, filters=start_filters * 2, block_fn=block_fn, blocks=layers[1],
             strides=2, is_training=is_training, name='block_layer2',
             data_format=data_format)
         inputs = block_layer(
-            inputs=inputs, filters=256, block_fn=block_fn, blocks=layers[2],
+            inputs=inputs, filters=start_filters * 4, block_fn=block_fn, blocks=layers[2],
             strides=2, is_training=is_training, name='block_layer3',
             data_format=data_format)
         inputs = block_layer(
-            inputs=inputs, filters=512, block_fn=block_fn, blocks=layers[3],
+            inputs=inputs, filters=start_filters * 8, block_fn=block_fn, blocks=layers[3],
             strides=2, is_training=is_training, name='block_layer4',
             data_format=data_format)
 
@@ -347,7 +347,7 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
     return model
 
 
-def imagenet_resnet_v2(resnet_size, num_classes, data_format=None):
+def imagenet_resnet_v2(resnet_size, num_classes, data_format=None, start_filters=64):
     """Returns the ResNet model for a given size and number of output classes."""
     model_params = {
         18: {'block': building_block, 'layers': [2, 2, 2, 2]},
@@ -363,4 +363,4 @@ def imagenet_resnet_v2(resnet_size, num_classes, data_format=None):
 
     params = model_params[resnet_size]
     return imagenet_resnet_v2_generator(
-        params['block'], params['layers'], num_classes, data_format)
+        params['block'], params['layers'], num_classes, data_format, start_filters=64)
