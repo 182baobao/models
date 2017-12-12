@@ -6,3 +6,5 @@ import os
 
 def func():
     pass
+
+print("here")
