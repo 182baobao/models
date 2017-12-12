@@ -4,16 +4,10 @@ from sklearn.metrics import average_precision_score
 import xml.etree.ElementTree as ET
 
 
-def read_img_xml_as_eval_info(img_path, xml_path):
+def read_img_xml_as_eval_info(img_path, xml_path, label_list):
     tree = ET.parse(xml_path)
     root = tree.getroot()
     size = root.find('size')
-    class_names = [
-        'Harbin Wheat 330ML Can', 'Budweiser Beer 330ML Can',
-        'Budweiser 600ML Bottle', 'Budweiser Beer 500ML Can', 'budweiser15',
-        'budweiser31', 'budweiser30', 'harbin26',
-        'budweiser26'
-    ]
     info = {}
     width = int(size.find('width').text)
     height = int(size.find('height').text)
@@ -21,14 +15,14 @@ def read_img_xml_as_eval_info(img_path, xml_path):
     objects = []
     for obj in root.iter('object'):
         cls_name = obj.find('name').text
-        if cls_name not in class_names:
+        if cls_name not in label_list:
             continue
         xml_box = obj.find('bndbox')
         xmin = int(xml_box.find('xmin').text) / width
         ymin = int(xml_box.find('ymin').text) / height
         xmax = int(xml_box.find('xmax').text) / width
         ymax = int(xml_box.find('ymax').text) / height
-        objects.append([class_names.index(cls_name), xmin, ymin, xmax, ymax])
+        objects.append([label_list.index(cls_name), xmin, ymin, xmax, ymax])
     info['objects'] = objects
     info['image'] = cv2.imread(img_path)
     return info

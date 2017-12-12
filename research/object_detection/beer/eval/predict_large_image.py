@@ -8,7 +8,6 @@ from functools import reduce
 from utils import visualization_utils as vis_util
 
 from beer.utils.file_io import read_file
-from beer.utils.file_io import get_label_from_pd_file
 from beer.data.create_lists import create_file_list
 from beer.data.tools import ImageDictCropper
 from beer.eval.tools import read_img_xml_as_eval_info
@@ -18,6 +17,8 @@ from beer.eval.predict_images import parse_args
 from beer.eval.predict_images import write_predictions_result
 from beer.eval.predict_images import evaluate_predictions
 from beer.eval.predict_images import compute_accuracy
+from beer.utils.file_io import read_label_as_list
+from beer.utils.file_io import read_label_as_map_dict
 
 
 def _merge_region_prediction(boxes, scores, classes, percent):
@@ -65,7 +66,7 @@ def _convert_region_box_to_global(info, boxes, classes, scores, index):
     return _boxes, _classes, _scores
 
 
-def predict_image(root, output_root, checkpoint, category_index, image_lists, score, percent):
+def predict_image(root, output_root, checkpoint, label_file, image_lists, score, percent):
     detection_graph = tf.Graph()
     with detection_graph.as_default():
         od_graph_def = tf.GraphDef()
@@ -76,6 +77,8 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    label_list = read_label_as_list(label_file, args.class_num, args.instance)
+    category_index = read_label_as_map_dict(label_file, args.class_num, args.instance)
 
     with detection_graph.as_default():
         with tf.Session(graph=detection_graph, config=config) as sess:
@@ -85,7 +88,7 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
                 print('predicting {} of {} images'.format(idx, len(image_lists)))
                 img_path, xml_path = paths.split('&!&')
                 xml_path = xml_path if xml_path[-1] == 'l' else xml_path[:-1]
-                info = read_img_xml_as_eval_info(img_path, xml_path)
+                info = read_img_xml_as_eval_info(img_path, xml_path, label_list)
                 cropper = ImageDictCropper(img_path)
                 info['crop_shape'] = cropper.cropped_size
                 cropper.update()
@@ -132,7 +135,9 @@ def predict_image(root, output_root, checkpoint, category_index, image_lists, sc
                 gt_num, true_pre, pre_objects = evaluate_predictions(_classes, _boxes, _scores, info, score, percent)
                 with open(os.path.join(root, 'gt_pre{}-{}.txt'.format(score, percent)), 'a') as txt_file:
                     print('{} {} {}'.format(idx, gt_num, true_pre), file=txt_file)
-                write_predictions_result(info, pre_objects, os.path.join(output_root, '{}.xml'.format(idx)))
+                write_predictions_result(info, pre_objects,
+                                         os.path.join(output_root, '{}.xml'.format(idx)),
+                                         label_list)
                 print('{} elapsed time: {:.3f}s'.format(time.ctime(),
                                                         time.time() - start_time))
                 if idx > 2000:
@@ -151,10 +156,8 @@ def process():
     output_root = os.path.join(output_root, 'pre{}-{}'.format(score, percent))
     if not os.path.exists(output_root):
         os.makedirs(output_root)
-    num_classes = args.class_num
-    category_index = get_label_from_pd_file(args.label_file, num_classes)
     predict_image(args.root, output_root, args.checkpoint,
-                  category_index, image_lists, score, percent)
+                  args.label_file, image_lists, score, percent)
     compute_accuracy(os.path.join(args.root, 'gt_pre{}-{}.txt'.format(score, percent)))
 
 
