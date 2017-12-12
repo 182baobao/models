@@ -153,7 +153,8 @@ def process():
         os.makedirs(output_root)
     num_classes = args.class_num
     category_index = get_label_from_pd_file(args.label_file, num_classes)
-    predict_image(args.root, output_root, args.checkpoint, category_index, image_lists, score, percent)
+    predict_image(args.root, output_root, args.checkpoint,
+                  category_index, image_lists, score, percent)
     compute_accuracy(os.path.join(args.root, 'gt_pre{}-{}.txt'.format(score, percent)))
 
 
