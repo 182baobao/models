@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export PYTHONPATH=$PYTHONPATH:$DIR/../../
-export PYTHONPATH=$PYTHONPATH:$DIR/../../slim
-export PYTHONPATH=$PYTHONPATH:$DIR/../../object_detection
+export PYTHONPATH=$DIR/../../:$PYTHONPATH
+export PYTHONPATH=$DIR/../../slim:$PYTHONPATH
+export PYTHONPATH=$DIR/../../object_detection;$PYTHONPATH
 
 pretrained=$DIR/../../object_detection/data/ssd_mobilenet_v1_coco_11_06_2017
 config=$DIR/../../object_detection/samples/configs/ssd_mobilenet_beer.config
