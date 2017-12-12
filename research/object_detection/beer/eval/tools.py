@@ -52,7 +52,7 @@ def get_overlap_area(rect1, rect2):
 def compute_mean_average_precision(predictions, ground_true, top_k=0):
     end = predictions.size
     if top_k > 0:
-        assert top_k < predictions.size, 'top_k is larger than predictions !'
+        assert top_k < predictions.size, 'top_k is larger than predictions number !'
         end = top_k
     aps = []
     for __i in range(1, end + 1):
