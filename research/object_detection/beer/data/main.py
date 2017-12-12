@@ -1,59 +1,11 @@
 import os
-import argparse
 
 from beer.data.create_lists import create_train_val_list
 from beer.data.create_lists import create_file_list
 from beer.data.tools import ImageListCropper
+from beer.data.tools import parse_args
 from beer.utils.file_io import read_file
 from beer.utils.file_io import read_label_as_list
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Prepare lists txt file for dataset')
-    parser.add_argument(
-        '--dataset',
-        dest='dataset',
-        help='dataset to use',
-        default='data',
-        type=str)
-    parser.add_argument(
-        '--target',
-        dest='target',
-        help='output list file',
-        default='data',
-        type=str)
-    parser.add_argument(
-        '--root',
-        dest='root_path',
-        help='dataset root path',
-        default=os.path.join(os.getcwd(), 'data', 'beer'),
-        type=str)
-    parser.add_argument(
-        '--postfix',
-        dest='postfix',
-        help='postfix to file',
-        default='',
-        type=str)
-    parser.add_argument(
-        '--label_file',
-        dest='label_file',
-        help='label file',
-        default='',
-        type=str)
-    parser.add_argument(
-        '--class_num',
-        dest='class_num',
-        help='class number',
-        default=9,
-        type=int)
-    parser.add_argument(
-        '--instance',
-        dest='instance',
-        help='required instance',
-        default=0,
-        type=int)
-    return parser.parse_args()
 
 
 def process_all(lists, output_root):

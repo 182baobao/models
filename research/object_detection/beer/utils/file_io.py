@@ -92,16 +92,23 @@ def write_file(file_path, file_list1, file_list2=None, split=' '):
 
 
 def read_label_as_list(file_path, classes=9, instance=0, split='&!&'):
+    def _split(string):
+        string = string if string[-1] != '\n' else string[:-1]
+        return string.split(split)
+
     array = read_file(file_path)
-    array = np.array(map(lambda x: x.split(split), array))
-    assert classes <= array.shape[0], 'required classes is bigger than actual !'
-    assert instance > int(array[0, 0]), 'required instance is bigger than actual !'
+    array = np.array(list(map(_split, array)))
+    print(array)
+    index = list(map(lambda x: int(x), array[:, 0]))
+    name = list(array[:, 1])
+    assert classes <= len(index), 'required classes is bigger than actual !'
+    assert instance <= index[0], 'required instance is bigger than actual !'
     if instance == 0:
-        return list(array[:classes, :])
+        return name[:classes]
     else:
-        for idx, arr in enumerate(array):
-            if int(arr[0]) < instance:
-                return list(array[:(idx + 1), :])
+        for idx, value in enumerate(index):
+            if value < instance:
+                return name[:(idx + 1)]
 
 
 def read_label_as_map_dict(file_path, classes=9, instance=0, split='&!&'):

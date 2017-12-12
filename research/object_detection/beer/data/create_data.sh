@@ -4,10 +4,12 @@ export PYTHONPATH=$DIR/../../:$PYTHONPATH
 export PYTHONPATH=$DIR/../../slim:$PYTHONPATH
 export PYTHONPATH=$DIR/../../object_detection;$PYTHONPATH
 
+## object detection dataset
+
 POSTFIX=300
 DATA=/home/admins/data/beer_data
 echo "cropping image ..."
-python3 $DIR/crop_tool/main.py \
+python3 $DIR/data/main.py \
 --root $DATA \
 --target crop \
 --postfix $POSTFIX

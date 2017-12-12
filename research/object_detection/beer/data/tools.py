@@ -1,8 +1,57 @@
 import xml.etree.ElementTree as ET
+import argparse
 import cv2
 import os
 
 from beer.utils.file_io import read_voc_xml
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Prepare lists txt file for dataset')
+    parser.add_argument(
+        '--dataset',
+        dest='dataset',
+        help='dataset to use',
+        default='data',
+        type=str)
+    parser.add_argument(
+        '--target',
+        dest='target',
+        help='output list file',
+        default='data',
+        type=str)
+    parser.add_argument(
+        '--root',
+        dest='root_path',
+        help='dataset root path',
+        default='',
+        type=str)
+    parser.add_argument(
+        '--postfix',
+        dest='postfix',
+        help='postfix to file',
+        default='',
+        type=str)
+    parser.add_argument(
+        '--label_file',
+        dest='label_file',
+        help='label file',
+        default='',
+        type=str)
+    parser.add_argument(
+        '--class_num',
+        dest='class_num',
+        help='class number',
+        default=9,
+        type=int)
+    parser.add_argument(
+        '--instance',
+        dest='instance',
+        help='required instance',
+        default=0,
+        type=int)
+    return parser.parse_args()
 
 
 def add_element(root, name, value):

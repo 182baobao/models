@@ -77,7 +77,7 @@ def parse_args():
         default=0,
         type=int)
     parser.add_argument(
-        '--label-file',
+        '--label_file',
         dest='label_file',
         help='path of image to use',
         default='/home/admins/cmake/models/research/object_detection/data/beer_label_map.pbtxt',

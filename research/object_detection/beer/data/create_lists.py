@@ -2,6 +2,7 @@ import os
 import numpy as np
 import xml.etree.ElementTree as ET
 
+from beer.data.tools import parse_args
 from beer.utils.file_io import write_file
 
 
@@ -50,7 +51,7 @@ def _traverse_file(path, lists, sets, label_list):
     for f in list_files:
         file_path = os.path.join(path, f)
         if os.path.isdir(file_path):
-            lists, sets = _traverse_file(file_path, lists, sets)
+            lists, sets = _traverse_file(file_path, lists, sets, label_list)
         elif f.endswith('xml'):
             good, sets_ = _check_xml_file(file_path, label_list)
             print(file_path)
@@ -101,18 +102,19 @@ def count_instance_number(root, output_file, split='&!&'):
     l_num = []
     for key, value in sets.items():
         print('{:30}\t {}'.format(key, value))
-        if key == 'Other':
+        if key == 'Others':
             continue
         l_name.append(key)
         l_num.append(value)
     l_name = np.array(l_name)
     l_num = np.array(l_num)
-    idx = np.argsort(l_num)
-    l_num = l_num[idx]
+    idx = np.argsort(-l_num)
+    l_num = list(map(lambda x: str(x), l_num[idx]))
     l_name = l_name[idx]
     write_file(output_file, list(l_num), list(l_name), split)
 
 
 if __name__ == '__main__':
-    out_root = '/home/admins/data/beer_data/data'
-    count_instance_number(out_root, os.path.join(out_root, 'beer_label.txt'))
+    args = parse_args()
+    count_instance_number(os.path.join(args.root_path, args.dataset),
+                          os.path.join(args.target, 'beer_label.txt'))
