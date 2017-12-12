@@ -20,7 +20,7 @@ def _merge_dict(dict1, dict2):
     return dict1
 
 
-def _check_xml_file(file_path):
+def _check_xml_file(file_path, label_list):
     try:
         tree = ET.parse(file_path)
         root = tree.getroot()
@@ -30,13 +30,9 @@ def _check_xml_file(file_path):
         sets = {}
         for obj in root.iter('object'):
             string = obj.find('name').text
-            if string not in [
-                    'Budweiser 600ML Bottle', 'Harbin Wheat 330ML Can',
-                    'budweiser15', 'Budweiser Beer 500ML Can', 'harbin26',
-                    'budweiser26', 'Budweiser Beer 330ML Can', 'budweiser31',
-                    'budweiser30'
-            ]:
-                continue
+            if len(label_list) > 0:
+                if string not in label_list:
+                    continue
             if string not in sets:
                 sets[string] = 1
             else:
@@ -46,7 +42,7 @@ def _check_xml_file(file_path):
         return False, {}
 
 
-def _traverse_file(path, lists, sets):
+def _traverse_file(path, lists, sets, label_list):
     """
     """
     path = os.path.expanduser(path)
@@ -56,7 +52,7 @@ def _traverse_file(path, lists, sets):
         if os.path.isdir(file_path):
             lists, sets = _traverse_file(file_path, lists, sets)
         elif f.endswith('xml'):
-            good, sets_ = _check_xml_file(file_path)
+            good, sets_ = _check_xml_file(file_path, label_list)
             print(file_path)
             if (not good) or (len(sets_) == 0):
                 continue
@@ -78,35 +74,35 @@ def _traverse_file(path, lists, sets):
     return lists, sets
 
 
-def create_train_val_list(data_root, output_root, postfix=''):
-    lists = []
-    sets = {}
-    lists, sets = _traverse_file(data_root, lists, sets)
-    np.random.shuffle(lists)
-    train = lists[:int(0.95 * len(lists))]
-    val = lists[int(0.95 * len(lists)):]
+def create_train_val_list(file_list, output_root,
+                          postfix='', train_data_ratio=0.95):
+    np.random.shuffle(file_list)
+    train = file_list[:int(train_data_ratio * len(file_list))]
+    val = file_list[int(train_data_ratio * len(file_list)):]
     train_path = os.path.join(output_root, 'train{}_list.txt'.format(postfix))
     write_file(train_path, train)
     val_path = os.path.join(output_root, 'val{}_list.txt'.format(postfix))
     write_file(val_path, val)
-    return lists, sets
 
 
-def create_file_list(data_root, output_file=''):
+def create_file_list(data_root,
+                     output_file='', label_list=[]):
     lists = []
     sets = {}
-    lists, sets = _traverse_file(data_root, lists, sets)
+    lists, sets = _traverse_file(data_root, lists, sets, label_list)
     if output_file != '':
         write_file(output_file, lists)
     return lists, sets
 
 
-def count_instance_number(root, output_file):
+def count_instance_number(root, output_file, split='&!&'):
     lists, sets = create_file_list(root)
     l_name = []
     l_num = []
     for key, value in sets.items():
         print('{:30}\t {}'.format(key, value))
+        if key == 'Other':
+            continue
         l_name.append(key)
         l_num.append(value)
     l_name = np.array(l_name)
@@ -114,10 +110,9 @@ def count_instance_number(root, output_file):
     idx = np.argsort(l_num)
     l_num = l_num[idx]
     l_name = l_name[idx]
-    output_set = np.hstack((l_num, l_name))
-    np.save(output_file, output_set)
+    write_file(output_file, list(l_num), list(l_name), split)
 
 
 if __name__ == '__main__':
     out_root = '/home/admins/data/beer_data/data'
-    count_instance_number(out_root, os.path.join(out_root, 'label.npy'))
+    count_instance_number(out_root, os.path.join(out_root, 'beer_label.txt'))
