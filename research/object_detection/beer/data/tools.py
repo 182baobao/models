@@ -34,6 +34,12 @@ def parse_args():
         default='',
         type=str)
     parser.add_argument(
+        '--prefix',
+        dest='prefix',
+        help='prefix to file',
+        default='list_data',
+        type=str)
+    parser.add_argument(
         '--label_file',
         dest='label_file',
         help='label file',
@@ -57,6 +63,12 @@ def parse_args():
 def add_element(root, name, value):
     sub_element = ET.SubElement(root, name)
     sub_element.text = value
+
+
+def get_file_name(filename):
+    (_, temp_filename) = os.path.split(filename)
+    (shot_name, _) = os.path.splitext(temp_filename)
+    return shot_name
 
 
 class SubImageCropper(object):

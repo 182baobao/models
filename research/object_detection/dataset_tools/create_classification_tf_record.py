@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 from PIL import Image
+import numpy as np
 
 from beer.utils.file_io import read_file
 
@@ -34,10 +35,14 @@ def main(_):
         img_path, label = example.split('&!&')
         img = Image.open(img_path)
         # img = img.resize((FLAGS.image_size, FLAGS.image_size))
+        img_arr = np.array(img)
         img_raw = img.tobytes()
         example = tf.train.Example(features=tf.train.Features(feature={
             'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[int(label)])),
             'img_raw': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
+            'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[img_arr.shape[0]])),
+            'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[img_arr.shape[1]])),
+            'channel': tf.train.Feature(int64_list=tf.train.Int64List(value=[img_arr.shape[2]]))
         }))
         writer.write(example.SerializeToString())
     writer.close()

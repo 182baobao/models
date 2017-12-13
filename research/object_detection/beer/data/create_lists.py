@@ -3,13 +3,8 @@ import numpy as np
 import xml.etree.ElementTree as ET
 
 from beer.data.tools import parse_args
+from beer.data.tools import get_file_name
 from beer.utils.file_io import write_file
-
-
-def get_file_name(filename):
-    (_, temp_filename) = os.path.split(filename)
-    (shot_name, _) = os.path.splitext(temp_filename)
-    return shot_name
 
 
 def _merge_dict(dict1, dict2):
@@ -75,14 +70,14 @@ def _traverse_file(path, lists, sets, label_list):
     return lists, sets
 
 
-def create_train_val_list(file_list, output_root,
+def create_train_val_list(file_list, output_root, prefix='',
                           postfix='', train_data_ratio=0.95):
     np.random.shuffle(file_list)
     train = file_list[:int(train_data_ratio * len(file_list))]
     val = file_list[int(train_data_ratio * len(file_list)):]
-    train_path = os.path.join(output_root, 'train{}_list.txt'.format(postfix))
+    train_path = os.path.join(output_root, '{}train{}.txt'.format(prefix, postfix))
     write_file(train_path, train)
-    val_path = os.path.join(output_root, 'val{}_list.txt'.format(postfix))
+    val_path = os.path.join(output_root, '{}val{}.txt'.format(prefix, postfix))
     write_file(val_path, val)
 
 

@@ -23,19 +23,19 @@ def process_all(lists, output_root):
         cropper.update(output_root + '/break.txt')
 
 
-def _make_data():
+def _make_data(prefix):
     train = 'train{}'.format(args.postfix)
     val = 'val{}'.format(args.postfix)
     origin_data = os.path.join(args.root_path, args.dataset)
     output_data = os.path.join(args.root_path, args.target)
     file_list, _ = create_file_list(origin_data, label_list=label_list)
-    create_train_val_list(file_list, args.root_path, args.postfix)
-    train_list = read_file(os.path.join(args.root_path, '{}_list.txt'.format(train)))
+    create_train_val_list(file_list, args.root_path, prefix, args.postfix)
+    train_list = read_file(os.path.join(args.root_path, '{}{}.txt'.format(prefix, train)))
     train_path = os.path.join(output_data, train)
     process_all(train_list, train_path)
     create_file_list(train_path,
                      os.path.join(args.root_path, '{}.txt'.format(train)), label_list)
-    val_list = read_file(os.path.join(args.root_path, '{}_list.txt'.format(val)))
+    val_list = read_file(os.path.join(args.root_path, '{}{}.txt'.format(prefix, val)))
     val_path = os.path.join(output_data, val)
     process_all(val_list, val_path)
     create_file_list(val_path, os.path.join(args.root_path, '{}.txt'.format(val)), label_list)
@@ -44,4 +44,4 @@ def _make_data():
 if __name__ == '__main__':
     args = parse_args()
     label_list = read_label_as_list(args.label_file, args.class_num, args.instance)
-    _make_data()
+    _make_data(args.prefix)

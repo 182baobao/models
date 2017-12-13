@@ -4,7 +4,6 @@ import numpy as np
 
 from beer.data.main import parse_args
 from beer.data.create_lists import create_file_list
-from beer.data.create_lists import create_train_val_list
 from beer.utils.file_io import read_label_as_list
 from beer.utils.file_io import read_voc_xml
 from beer.utils.file_io import write_file

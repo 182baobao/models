@@ -276,8 +276,8 @@ def central_padding(image, output_shape):
     shape = tf.shape(tf.squeeze(image))
     pad_head = tf.subtract(output_shape, shape) // 2
     pad_tail = tf.subtract(output_shape, shape) - pad_head
-    pad_head.set_shape([3, 1])
-    pad_tail.set_shape([3, 1])
+    pad_head = tf.reshape(pad_head, [3, 1])
+    pad_tail = tf.reshape(pad_tail, [3, 1])
     padding = tf.concat([pad_head, pad_tail], 1)
     return tf.pad(image, padding)
 
@@ -293,17 +293,30 @@ def resize_larger_dimension(image, output_height, output_width):
     :param output_width: The biggest width of the image after preprocessing.
     :return:
     """
-    height = tf.convert_to_tensor([output_height])
-    width = tf.convert_to_tensor([output_width])
+    height = tf.constant(output_height)
+    width = tf.constant(output_width)
+    flag = [0]
+
+    def _app(f, dim=False, value=0):
+        if dim:
+            f.append(value)
+        return True
+
     while True:
         shape = tf.shape(image)
-        if (shape[0] <= output_height) and (shape[1] <= output_width):
+        tf.cond((tf.squeeze(shape[0]) <= height) & (tf.squeeze(shape[1]) <= width),
+                lambda: _app(flag, True), lambda: _app(flag))
+        if flag[-1] == 0:
             break
         min_dim = tf.to_float(tf.minimum(shape[0], shape[1]))
-        if tf.cast(shape[0], tf.int32) > output_height:
+        tf.cond(tf.squeeze(shape[0]) > height,
+                lambda: _app(flag), lambda: _app(flag, True, 1))
+        if flag[-1] != 1:
             smallest_side = min_dim * height / shape[0]
             image = aspect_preserving_resize(image, tf.to_int32(smallest_side))
-        if tf.cast(shape[1], tf.int32) > output_width:
+        tf.cond(tf.squeeze(shape[1]) > height,
+                lambda: _app(flag), lambda: _app(flag, True, 2))
+        if flag[-1] != 2:
             smallest_side = min_dim * width / shape[1]
             image = aspect_preserving_resize(image, tf.to_int32(smallest_side))
     return image
@@ -336,13 +349,12 @@ def preprocess_for_train(image,
     image = aspect_preserving_resize(image, resize_side)
     shape = tf.shape(image)
     image = random_crop([image], shape[0], shape[1])[0]
-    new_shape = tf.TensorShape(shape[:2])
-    new_shape.concatenate(3)
-    image.set_shape(new_shape)
+    image = tf.reshape(image, [shape[0], shape[1], 3])
     image = resize_larger_dimension(image, output_height, output_width)
     image = central_padding(image, (output_height, output_width, 3))
     image = tf.to_float(image)
-    return mean_image_subtraction(image, [0, 0, 0])
+    # return mean_image_subtraction(image, [0, 0, 0])
+    return tf.reshape(image, [output_height, output_width, 3])
 
 
 def preprocess_for_eval(image, output_height, output_width, resize_side):
@@ -360,13 +372,12 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     image = aspect_preserving_resize(image, resize_side)
     shape = tf.shape(image)
     image = central_crop([image], shape[0], shape[1])[0]
-    new_shape = tf.TensorShape(shape[:2])
-    new_shape.concatenate(3)
-    image.set_shape(new_shape)
+    image = tf.reshape(image, [shape[0], shape[1], 3])
     image = resize_larger_dimension(image, output_height, output_width)
     image = central_padding(image, (output_height, output_width, 3))
     image = tf.to_float(image)
-    return mean_image_subtraction(image, [0, 0, 0])
+    # return mean_image_subtraction(image, [0, 0, 0])
+    return tf.reshape(image, [output_height, output_width, 3])
 
 
 def preprocess_image(image, output_height, output_width, is_training=False, scale=0.1):
