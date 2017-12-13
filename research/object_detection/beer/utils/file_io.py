@@ -98,7 +98,6 @@ def read_label_as_list(file_path, classes=9, instance=0, split='&!&'):
 
     array = read_file(file_path)
     array = np.array(list(map(_split, array)))
-    print(array)
     index = list(map(lambda x: int(x), array[:, 0]))
     name = list(array[:, 1])
     assert classes <= len(index), 'required classes is bigger than actual !'

@@ -156,7 +156,7 @@ def main(_):
         raise ValueError('set must be in : {}'.format(SETS))
 
     data_dir = FLAGS.data_dir
-    writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+    writer = tf.python_io.TFRecordWriter(FLAGS.output_path + '{}_{}.record'.format(FLAGS.set, FLAGS.postfix))
     label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
     examples_path = os.path.join(data_dir, FLAGS.set + '{}.txt'.format(FLAGS.postfix))
     examples_list = dataset_util.read_examples_list(examples_path)

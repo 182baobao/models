@@ -38,10 +38,12 @@ def parse_args():
         '--resnet_size', type=int, default=34, choices=[18, 34, 50, 101, 152, 200],
         help='The size of the ResNet model to use.')
     parser.add_argument(
-        '--image_size', type=int, default=112,
+        '--postfix', help='postfix to file', default='patch', type=str)
+    parser.add_argument(
+        '--image_size', type=int, default=192,
         help='The size of the ResNet model to use.')
     parser.add_argument(
-        '--class_num', type=int, default=9,
+        '--class_num', type=int, default=34,
         help='class number.')
     parser.add_argument(
         '--train_epochs', type=int, default=100,
@@ -69,9 +71,9 @@ def parse_args():
 def file_names(is_training, data_dir):
     """Return file_names for dataset."""
     if is_training:
-        return [os.path.join(data_dir, 'train')]
+        return [os.path.join(data_dir, 'train{}.record'.format(FLAGS.postfix))]
     else:
-        return [os.path.join(data_dir, 'val')]
+        return [os.path.join(data_dir, 'val{}.record'.format(FLAGS.postfix))]
 
 
 def record_parser(value, is_training):
