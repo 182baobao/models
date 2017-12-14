@@ -41,7 +41,7 @@ def predict_image(checkpoint, label_file, image_list, score, percent):
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-    category_index = get_label_from_pd_file(label_file)
+    category_index = get_label_from_pd_file(label_file, 1)
 
     with detection_graph.as_default():
         with tf.Session(graph=detection_graph, config=config) as sess:
@@ -103,5 +103,5 @@ def predict_image(checkpoint, label_file, image_list, score, percent):
 
 if __name__ == '__main__':
     args = parse_args()
-    image_lists = create_file_list(args.root)
+    image_lists, _ = create_file_list(args.root)
     predict_image(args.checkpoint, args.label_file, image_lists, 0.3, 0.75)
