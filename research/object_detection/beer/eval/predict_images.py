@@ -222,7 +222,7 @@ def process():
         image_lists = read_file(args.image_list)
     else:
         image_root = reduce(lambda x, y: os.path.join(x, y), args.image_path.split('.'), args.root)
-        image_lists, _ = create_file_list(image_root, filtering=lambda x, y, _: (y[0] + [x], y[1]))
+        image_lists, _ = create_file_list(image_root)
     output_root = args.root if args.output == '' else args.output
     score = args.score
     percent = args.percent

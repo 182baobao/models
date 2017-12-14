@@ -2,6 +2,7 @@ import os
 
 from beer.data.create_lists import create_train_val_list
 from beer.data.create_lists import create_file_list
+from beer.data.create_lists import check_xml_and_img_file
 from beer.data.tools import ImageListCropper
 from beer.data.tools import parse_args
 from beer.utils.file_io import read_file
@@ -28,18 +29,18 @@ def _make_data(prefix, postfix, split='&!&'):
     val = 'val{}'.format(postfix)
     origin_data = os.path.join(args.root_path, args.dataset)
     output_data = os.path.join(args.root_path, args.target)
-    file_list, _ = create_file_list(origin_data, params=(class_names, split))
+    file_list, _ = create_file_list(origin_data,
+                                    filtering=check_xml_and_img_file,
+                                    params=(class_names, split))
     create_train_val_list(file_list, args.root_path, prefix, args.postfix)
     train_list = read_file(os.path.join(args.root_path, '{}{}.txt'.format(prefix, train)))
     train_path = os.path.join(output_data, train)
     process_all(train_list, train_path, split)
-    create_file_list(train_path,
-                     os.path.join(args.root_path, '{}.txt'.format(train)),
-                     params=(class_names, split))
+    create_file_list(train_path, os.path.join(args.root_path, '{}.txt'.format(train)))
     val_list = read_file(os.path.join(args.root_path, '{}{}.txt'.format(prefix, val)))
     val_path = os.path.join(output_data, val)
     process_all(val_list, val_path, split)
-    create_file_list(val_path, os.path.join(args.root_path, '{}.txt'.format(val)), class_names)
+    create_file_list(val_path, os.path.join(args.root_path, '{}.txt'.format(val)))
 
 
 if __name__ == '__main__':

@@ -22,7 +22,7 @@ from beer.utils.file_io import read_label_as_list
 from beer.utils.file_io import read_label_as_map_dict
 
 
-def _merge_region_prediction(boxes, scores, classes, percent):
+def merge_region_prediction(boxes, scores, classes, percent):
     idx = np.argsort(-scores)
     boxes = boxes[idx]
     scores = scores[idx]
@@ -47,9 +47,9 @@ def _merge_region_prediction(boxes, scores, classes, percent):
     return _boxes, _classes, _scores
 
 
-def _convert_region_box_to_global(info, boxes, classes, scores, index):
-    src_h, src_w = info['shape']
-    h, w = info['crop_shape']
+def convert_region_box_to_global(info, boxes, classes, scores, index):
+    src_h, src_w = info['shape'][:2]
+    h, w = info['crop_shape'][:2]
     idx_x, idx_y = int(index.split('_')[0]), int(index.split('_')[1])
     _boxes = []
     _scores = []
@@ -100,11 +100,11 @@ def predict_image(root, output_root, checkpoint, label_file, image_lists, score,
                 for key, value in images.items():
                     image_np = np.array(value[:, :, (2, 1, 0)]).astype(np.uint8)
                     boxes, classes, scores = run_detection(sess, detection_graph, image_np)
-                    boxes, classes, scores = _convert_region_box_to_global(info, boxes, classes, scores, key)
+                    boxes, classes, scores = convert_region_box_to_global(info, boxes, classes, scores, key)
                     _boxes += boxes
                     _classes += classes
                     _scores += scores
-                _boxes, _classes, _scores = _merge_region_prediction(
+                _boxes, _classes, _scores = merge_region_prediction(
                     np.array(_boxes), np.array(_scores), np.array(_classes), percent)
                 _boxes = np.array(_boxes)
                 _classes = np.array(_classes).astype(np.int32)
@@ -137,7 +137,7 @@ def process():
         image_lists = read_file(args.image_list)
     else:
         image_root = reduce(lambda x, y: os.path.join(x, y), args.image_path.split('.'), args.root)
-        image_lists, _ = create_file_list(image_root, filtering=lambda x, y, _: (y[0] + [x], y[1]))
+        image_lists, _ = create_file_list(image_root)
     output_root = args.root if args.output == '' else args.output
     score = args.score
     percent = args.percent

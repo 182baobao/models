@@ -39,7 +39,7 @@ def _merge_dict(dict1, dict2):
 #         return False, {}
 
 
-def _check_xml_and_img_file(file_path, lists, params):
+def check_xml_and_img_file(file_path, lists, params):
     """
     a filter for traverse file system
     :param file_path: file absolution path
@@ -144,7 +144,7 @@ def create_train_val_list(file_list, output_root,
 
 def create_file_list(data_root,
                      output_file='',
-                     filtering=_check_xml_and_img_file,
+                     filtering=lambda x, y, _: (y[0] + [x], y[1]),
                      params=()):
     """
     traverse a root and get all the required files to a list
