@@ -17,6 +17,7 @@ from beer.eval.predict_images import parse_args
 from beer.eval.predict_images import write_predictions_result
 from beer.eval.predict_images import evaluate_predictions
 from beer.eval.predict_images import compute_accuracy
+from beer.eval.predict_images import run_detection
 from beer.utils.file_io import read_label_as_list
 from beer.utils.file_io import read_label_as_map_dict
 
@@ -98,20 +99,7 @@ def predict_image(root, output_root, checkpoint, label_file, image_lists, score,
                 _classes = []
                 for key, value in images.items():
                     image_np = np.array(value[:, :, (2, 1, 0)]).astype(np.uint8)
-                    image_np_expanded = np.expand_dims(image_np, axis=0)
-                    image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-                    boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-                    scores = detection_graph.get_tensor_by_name('detection_scores:0')
-                    classes = detection_graph.get_tensor_by_name('detection_classes:0')
-                    num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-                    (boxes, scores, classes, num_detections) = sess.run(
-                        [boxes, scores, classes, num_detections],
-                        feed_dict={
-                            image_tensor: image_np_expanded
-                        })
-                    boxes = np.squeeze(boxes)
-                    classes = np.squeeze(classes).astype(np.int32)
-                    scores = np.squeeze(scores)
+                    boxes, classes, scores = run_detection(sess, detection_graph, image_np)
                     boxes, classes, scores = _convert_region_box_to_global(info, boxes, classes, scores, key)
                     _boxes += boxes
                     _classes += classes

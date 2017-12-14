@@ -79,7 +79,7 @@ class SubImageCropper(object):
     def __init__(self, image_path,
                  cropped_size=(416, 416),
                  stride=(104, 104)):
-        self._image = cv2.imread(image_path)
+        self._image = cv2.imread(image_path) if isinstance(image_path, str) else image_path
         self._cropped_size = list(cropped_size)
         self._widths = []
         self._in_widths = []

@@ -82,8 +82,25 @@ def parse_args():
         help='path of image to use',
         default='/home/admins/cmake/models/research/object_detection/data/beer_label_map.pbtxt',
         type=str)
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
+
+
+def run_detection(sess, detection_graph, image_np):
+    image_np_expanded = np.expand_dims(image_np, axis=0)
+    image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
+    boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
+    scores = detection_graph.get_tensor_by_name('detection_scores:0')
+    classes = detection_graph.get_tensor_by_name('detection_classes:0')
+    num_detections = detection_graph.get_tensor_by_name('num_detections:0')
+    (boxes, scores, classes, num_detections) = sess.run(
+        [boxes, scores, classes, num_detections],
+        feed_dict={
+            image_tensor: image_np_expanded
+        })
+    boxes = np.squeeze(boxes)
+    classes = np.squeeze(classes).astype(np.int32)
+    scores = np.squeeze(scores)
+    return boxes, classes, scores
 
 
 def evaluate_predictions(classes, boxes, scores, info, _score, percent):
@@ -178,20 +195,7 @@ def predict_image(root, output_root, checkpoint, label_file, image_lists, score,
                 image = Image.open(img_path)
                 info = read_img_xml_as_eval_info(img_path, xml_path, label_list)
                 image_np = np.array(image).astype(np.uint8)
-                image_np_expanded = np.expand_dims(image_np, axis=0)
-                image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-                boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-                scores = detection_graph.get_tensor_by_name('detection_scores:0')
-                classes = detection_graph.get_tensor_by_name('detection_classes:0')
-                num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-                (boxes, scores, classes, num_detections) = sess.run(
-                    [boxes, scores, classes, num_detections],
-                    feed_dict={
-                        image_tensor: image_np_expanded
-                    })
-                boxes = np.squeeze(boxes)
-                classes = np.squeeze(classes).astype(np.int32)
-                scores = np.squeeze(scores)
+                boxes, classes, scores = run_detection(sess, detection_graph, image_np)
                 vis_util.visualize_boxes_and_labels_on_image_array(
                     image_np,
                     boxes,
