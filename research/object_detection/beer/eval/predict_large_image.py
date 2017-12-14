@@ -7,7 +7,6 @@ from functools import reduce
 
 from utils import visualization_utils as vis_util
 
-from beer.utils.file_io import read_file
 from beer.data.create_lists import create_file_list
 from beer.data.tools import ImageDictCropper
 from beer.eval.tools import read_img_xml_as_eval_info
@@ -18,6 +17,7 @@ from beer.eval.predict_images import write_predictions_result
 from beer.eval.predict_images import evaluate_predictions
 from beer.eval.predict_images import compute_accuracy
 from beer.eval.predict_images import run_detection
+from beer.utils.file_io import read_file
 from beer.utils.file_io import read_label_as_list
 from beer.utils.file_io import read_label_as_map_dict
 

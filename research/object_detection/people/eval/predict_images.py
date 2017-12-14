@@ -1,4 +1,5 @@
 import time
+import os
 import tensorflow as tf
 import numpy as np
 from PIL import Image
@@ -139,7 +140,9 @@ def predict_image(checkpoint, label_file, image_lists, score, percent):
                     use_normalized_coordinates=True,
                     min_score_thresh=score,
                     line_thickness=1)
-                output_images.append(Image.fromarray(image))
+                pic = Image.fromarray(image)
+                pic.save(os.path.join(args.root, '{}.jpg'.format(idx)))
+                output_images.append(image)
             time_cost = time.time() - start_time
     return output_images, time_cost
 
