@@ -117,7 +117,7 @@ def evaluate_predictions(classes, boxes, scores, info, _score, percent):
                     area = get_overlap_area([box[1], box[0], box[3], box[2]], _ob[1:])
                     if ((area / src_area) > percent) and (cls == (_ob[0] + 1)):
                         true_pre += 1
-                        pre_objects.append([cls, *box, score])
+                        pre_objects.append([cls] + list(box) + [score])
                     break
     return gt_num, true_pre, pre_objects
 
@@ -222,7 +222,7 @@ def process():
         image_lists = read_file(args.image_list)
     else:
         image_root = reduce(lambda x, y: os.path.join(x, y), args.image_path.split('.'), args.root)
-        image_lists, _ = create_file_list(image_root)
+        image_lists, _ = create_file_list(image_root, filtering=lambda x, y, _: (y[0] + [x], y[1]))
     output_root = args.root if args.output == '' else args.output
     score = args.score
     percent = args.percent

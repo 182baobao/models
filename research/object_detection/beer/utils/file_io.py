@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from utils import label_map_util
 
 
-def traverse_file(root, lists, filtering):
+def traverse_file(root, lists, filtering, params):
     """
     """
     path = os.path.expanduser(root)
@@ -13,9 +13,9 @@ def traverse_file(root, lists, filtering):
     for f in list_files:
         file_path = os.path.join(path, f)
         if os.path.isdir(file_path):
-            lists = traverse_file(file_path, lists, filtering)
+            lists = traverse_file(file_path, lists, filtering, params)
         else:
-            lists = filtering(file_path, lists)
+            lists = filtering(file_path, lists, params)
     return lists
 
 
@@ -27,7 +27,7 @@ def get_label_from_pd_file(pd_file, class_num):
     return category_index
 
 
-def read_voc_xml(file_path, image_size, label_list):
+def read_voc_xml(file_path, image_size, class_name):
     tree = ET.parse(file_path)
     root = tree.getroot()
     size = root.find('size')
@@ -39,20 +39,17 @@ def read_voc_xml(file_path, image_size, label_list):
     def _read_xml(changed=False):
         for obj in root.iter('object'):
             cls_name = obj.find('name').text
-            if len(label_list) > 0:
-                if cls_name not in label_list:
+            if len(class_name) > 0:
+                if cls_name not in class_name:
                     continue
             xml_box = obj.find('bndbox')
-            if not changed:
-                xmin = int(xml_box.find('xmin').text)
-                ymin = int(xml_box.find('ymin').text)
-                xmax = int(xml_box.find('xmax').text)
-                ymax = int(xml_box.find('ymax').text)
-            else:
-                ymin = int(xml_box.find('xmin').text)
-                xmin = int(xml_box.find('ymin').text)
-                ymax = int(xml_box.find('xmax').text)
-                xmax = int(xml_box.find('ymax').text)
+            xmin = int(xml_box.find('xmin').text)
+            ymin = int(xml_box.find('ymin').text)
+            xmax = int(xml_box.find('xmax').text)
+            ymax = int(xml_box.find('ymax').text)
+            if changed:
+                xmin, ymin = ymin, xmin
+                xmax, ymax = ymax, xmax
             if (0 <= xmin < xmax <= image_size[1]) or (
                     0 <= ymin < ymax <= image_size[0]):
                 objects.append([cls_name, xmin, ymin, xmax, ymax])

@@ -73,7 +73,7 @@ def _convert_region_box_to_global(info, boxes, classes, scores, index):
     return _boxes, _classes, _scores
 
 
-def predict_image(checkpoint, label_file, image_lists, score, percent):
+def predict_image(checkpoint, label_file, image_list, score, percent):
     output_images = []
 
     detection_graph = tf.Graph()
@@ -91,7 +91,7 @@ def predict_image(checkpoint, label_file, image_lists, score, percent):
     with detection_graph.as_default():
         with tf.Session(graph=detection_graph, config=config) as sess:
             start_time = time.time()
-            for idx, image in enumerate(image_lists):
+            for idx, image in enumerate(image_list):
                 top_img, bottom_img = slice_image(np.array(image))
                 # top image
                 top_cropper = ImageDictCropper(image, (320, 320), (120, 200))

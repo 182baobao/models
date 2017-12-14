@@ -3,7 +3,6 @@ import os
 from beer.data.tools import parse_args
 from beer.data.tools import get_file_name
 from beer.data.create_lists import create_train_val_list
-from beer.utils.file_io import write_file
 
 
 def create_edge_patch_list(data_root, output_root, prefix='', postfix='', split='&!&'):
@@ -19,7 +18,6 @@ def create_edge_patch_list(data_root, output_root, prefix='', postfix='', split=
                 if os.path.exists(ex_img_path):
                     output_list.append(ex_img_path + split + ann_path)
     create_train_val_list(output_list, output_root, prefix, postfix)
-    # write_file(os.path.join(output_root, 'train{}.txt'.format(postfix)), output_list)
 
 
 if __name__ == '__main__':
