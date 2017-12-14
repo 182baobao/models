@@ -22,15 +22,27 @@ def slice_image(image, axis=0, wrap_pixel=128, wrap_ratio=0, slice_seat=0.5):
     if axis == 0:
         former = image[:(seat + wrap_pixel // 2), :, :]
         later = image[(seat - wrap_pixel // 2):, :, :]
-        later_key = '{}_{}'.format(seat - wrap_pixel // 2, 0)
+        later_key = '{}_{}'.format(0, seat - wrap_pixel // 2)
     else:
         former = image[:, (seat + wrap_pixel // 2), :]
         later = image[:, (seat - wrap_pixel // 2):, :]
-        later_key = '{}_{}'.format(0, seat - wrap_pixel // 2)
+        later_key = '{}_{}'.format(seat - wrap_pixel // 2, 0)
     return (former, '{}_{}'.format(0, 0)), (later, later_key)
 
 
 def predict_image(checkpoint, label_file, image_list, score, percent):
+    """
+    prediction function using the pretrained model predict the input images
+    :param checkpoint: frozen_inference_graph.pb file
+    :param label_file: a file like people.pdtxt
+    :param image_list: a list of images who are going to be predicted,
+                        can be strings or ndarrays, the ndarrays' shape
+                        should be (H, W, C), for instance. [image]:
+                        image = cv2.imread(image_file)[:, :, (2, 1, 0)]
+    :param score: the minimum threshold to show the boxes of predicted objects
+    :param percent: the minimum threshold to merge the two overlapped boxes
+    :return: a list of predicted images
+    """
     output_images = []
 
     detection_graph = tf.Graph()

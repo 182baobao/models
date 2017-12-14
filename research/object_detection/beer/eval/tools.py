@@ -29,10 +29,10 @@ def read_img_xml_as_eval_info(img_path, xml_path, label_list):
 
 
 def is_overlap(rect1, rect2):
-    return not ((rect1[0] > rect2[2]) or
-                (rect1[1] > rect2[3]) or
-                (rect1[2] < rect2[0]) or
-                (rect1[3] < rect2[1]))
+    return not ((rect1[0] >= rect2[2]) or
+                (rect1[1] >= rect2[3]) or
+                (rect1[2] <= rect2[0]) or
+                (rect1[3] <= rect2[1]))
 
 
 def get_overlap_area(rect1, rect2):
