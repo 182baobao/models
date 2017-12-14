@@ -1,7 +1,22 @@
 import numpy as np
+import os
 import xml.etree.ElementTree as ET
 
 from utils import label_map_util
+
+
+def traverse_file(root, lists, filtering, params):
+    """
+    """
+    path = os.path.expanduser(root)
+    list_files = os.listdir(root)
+    for f in list_files:
+        file_path = os.path.join(path, f)
+        if os.path.isdir(file_path):
+            lists = traverse_file(file_path, lists, filtering, params)
+        else:
+            lists = filtering(file_path, lists, params)
+    return lists
 
 
 def get_label_from_pd_file(pd_file, class_num):
@@ -12,7 +27,7 @@ def get_label_from_pd_file(pd_file, class_num):
     return category_index
 
 
-def read_voc_xml(file_path, image_size):
+def read_voc_xml(file_path, image_size, class_name):
     tree = ET.parse(file_path)
     root = tree.getroot()
     size = root.find('size')
@@ -24,24 +39,17 @@ def read_voc_xml(file_path, image_size):
     def _read_xml(changed=False):
         for obj in root.iter('object'):
             cls_name = obj.find('name').text
-            if cls_name not in [
-                'Budweiser 600ML Bottle', 'Harbin Wheat 330ML Can',
-                'budweiser15', 'Budweiser Beer 500ML Can', 'harbin26',
-                'budweiser26', 'Budweiser Beer 330ML Can', 'budweiser31',
-                'budweiser30'
-            ]:
-                continue
+            if len(class_name) > 0:
+                if cls_name not in class_name:
+                    continue
             xml_box = obj.find('bndbox')
-            if not changed:
-                xmin = int(xml_box.find('xmin').text)
-                ymin = int(xml_box.find('ymin').text)
-                xmax = int(xml_box.find('xmax').text)
-                ymax = int(xml_box.find('ymax').text)
-            else:
-                ymin = int(xml_box.find('xmin').text)
-                xmin = int(xml_box.find('ymin').text)
-                ymax = int(xml_box.find('xmax').text)
-                xmax = int(xml_box.find('ymax').text)
+            xmin = int(xml_box.find('xmin').text)
+            ymin = int(xml_box.find('ymin').text)
+            xmax = int(xml_box.find('xmax').text)
+            ymax = int(xml_box.find('ymax').text)
+            if changed:
+                xmin, ymin = ymin, xmin
+                xmax, ymax = ymax, xmax
             if (0 <= xmin < xmax <= image_size[1]) or (
                     0 <= ymin < ymax <= image_size[0]):
                 objects.append([cls_name, xmin, ymin, xmax, ymax])
@@ -66,7 +74,7 @@ def read_file(root):
     return info
 
 
-def write_file(file_path, file_list1, file_list2=None):
+def write_file(file_path, file_list1, file_list2=None, split=' '):
     if file_list2 is None:
         with open(file_path, 'w') as file:
             for string in file_list1:
@@ -75,26 +83,33 @@ def write_file(file_path, file_list1, file_list2=None):
         if len(file_list1) == len(file_list2):
             with open(file_path, 'w') as file:
                 for string1, string2 in zip(file_list1, file_list2):
-                    print(string1 + ' ' + string2, file=file)
+                    print(string1 + split + string2, file=file)
         else:
             return
 
 
-def read_label_as_list(file_path, classes=9, instance=0):
-    array = np.load(file_path)
-    assert classes <= array.shape[0], 'required classes is bigger than actual !'
-    assert instance > int(array[0, 0]), 'required instance is bigger than actual !'
+def read_label_as_list(file_path, classes=9, instance=0, split='&!&'):
+    def _split(string):
+        string = string if string[-1] != '\n' else string[:-1]
+        return string.split(split)
+
+    array = read_file(file_path)
+    array = np.array(list(map(_split, array)))
+    index = list(map(lambda x: int(x), array[:, 0]))
+    name = list(array[:, 1])
+    assert classes <= len(index), 'required classes is bigger than actual !'
+    assert instance <= index[0], 'required instance is bigger than actual !'
     if instance == 0:
-        return list(array[:classes, :])
+        return name[:classes]
     else:
-        for idx, arr in enumerate(array):
-            if int(arr[0]) < instance:
-                return list(array[:(idx + 1), :])
+        for idx, value in enumerate(index):
+            if value < instance:
+                return name[:(idx + 1)]
 
 
-def read_label_as_map_dict(file_path, classes=9, instance=0):
-    label_list = read_label_as_list(file_path, classes, instance)
+def read_label_as_map_dict(file_path, classes=9, instance=0, split='&!&'):
+    label_list = read_label_as_list(file_path, classes, instance, split)
     map_dict = {}
     for idx, label in label_list:
-        map_dict[str(idx + 1)] = {'id': idx + 1, 'name': label}
+        map_dict[idx + 1] = {'id': idx + 1, 'name': label}
     return map_dict

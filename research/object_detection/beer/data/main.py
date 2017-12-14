@@ -1,48 +1,20 @@
 import os
-import argparse
 
 from beer.data.create_lists import create_train_val_list
 from beer.data.create_lists import create_file_list
+from beer.data.create_lists import check_xml_and_img_file
 from beer.data.tools import ImageListCropper
+from beer.data.tools import parse_args
 from beer.utils.file_io import read_file
+from beer.utils.file_io import read_label_as_list
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Prepare lists txt file for dataset')
-    parser.add_argument(
-        '--dataset',
-        dest='dataset',
-        help='dataset to use',
-        default='data',
-        type=str)
-    parser.add_argument(
-        '--target',
-        dest='target',
-        help='output list file',
-        default='data',
-        type=str)
-    parser.add_argument(
-        '--root',
-        dest='root_path',
-        help='dataset root path',
-        default=os.path.join(os.getcwd(), 'data', 'beer'),
-        type=str)
-    parser.add_argument(
-        '--postfix',
-        dest='postfix',
-        help='postfix to file',
-        default='',
-        type=str)
-    return parser.parse_args()
-
-
-def process_all(lists, output_root):
+def process_all(lists, output_root, split='&!&'):
     if not os.path.exists(output_root):
         os.makedirs(output_root)
     for count, paths in enumerate(lists):
         print(paths)
-        img_path, xml_path = paths.split('&!&')
+        img_path, xml_path = paths.split(split)
         out_root = os.path.join(output_root, '{:04}'.format(count // 1000),
                                 '{:08}'.format(count))
         if not os.path.exists(out_root):
@@ -52,22 +24,26 @@ def process_all(lists, output_root):
         cropper.update(output_root + '/break.txt')
 
 
-def _make_data():
-    train = 'train{}'.format(args.postfix)
-    val = 'val{}'.format(args.postfix)
+def _make_data(prefix, postfix, split='&!&'):
+    train = 'train{}'.format(postfix)
+    val = 'val{}'.format(postfix)
     origin_data = os.path.join(args.root_path, args.dataset)
     output_data = os.path.join(args.root_path, args.target)
-    create_train_val_list(origin_data, args.root_path, args.postfix)
-    train_list = read_file(os.path.join(args.root_path, '{}_list.txt'.format(train)))
+    file_list, _ = create_file_list(origin_data,
+                                    filtering=check_xml_and_img_file,
+                                    params=(class_names, split))
+    create_train_val_list(file_list, args.root_path, prefix, args.postfix)
+    train_list = read_file(os.path.join(args.root_path, '{}{}.txt'.format(prefix, train)))
     train_path = os.path.join(output_data, train)
-    process_all(train_list, train_path)
+    process_all(train_list, train_path, split)
     create_file_list(train_path, os.path.join(args.root_path, '{}.txt'.format(train)))
-    val_list = read_file(os.path.join(args.root_path, '{}_list.txt'.format(val)))
+    val_list = read_file(os.path.join(args.root_path, '{}{}.txt'.format(prefix, val)))
     val_path = os.path.join(output_data, val)
-    process_all(val_list, val_path)
+    process_all(val_list, val_path, split)
     create_file_list(val_path, os.path.join(args.root_path, '{}.txt'.format(val)))
 
 
 if __name__ == '__main__':
     args = parse_args()
-    _make_data()
+    class_names = read_label_as_list(args.label_file, args.class_num, args.instance)
+    _make_data(args.prefix, args.postfix)

@@ -290,6 +290,7 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
       num_classes: The number of possible classes for image classification.
       data_format: The input format ('channels_last', 'channels_first', or None).
         If set to None, the format is dependent on whether a GPU is available.
+      start_filters: The number of filter
 
     Returns:
       The model function that takes in `inputs` and `is_training` and
@@ -306,18 +307,18 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
             # This provides a large performance boost on GPU. See
             # https://www.tensorflow.org/performance/performance_guide#data_formats
             inputs = tf.transpose(inputs, [0, 3, 1, 2])
-        inputs = tf.layers.batch_normalization(
-            inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
-            momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
-            scale=True, training=is_training, fused=True)
+        # inputs = tf.layers.batch_normalization(
+        #     inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
+        #     momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
+        #     scale=True, training=is_training, fused=True)
         inputs = conv2d_fixed_padding(
-            inputs=inputs, filters=start_filters, kernel_size=5, strides=2,
+            inputs=inputs, filters=start_filters, kernel_size=7, strides=2,
             data_format=data_format)
         inputs = tf.identity(inputs, 'initial_conv')
-        # inputs = tf.layers.max_pooling2d(
-        #     inputs=inputs, pool_size=3, strides=2, padding='SAME',
-        #     data_format=data_format)
-        # inputs = tf.identity(inputs, 'initial_max_pool')
+        inputs = tf.layers.max_pooling2d(
+            inputs=inputs, pool_size=3, strides=2, padding='SAME',
+            data_format=data_format)
+        inputs = tf.identity(inputs, 'initial_max_pool')
 
         inputs = block_layer(
             inputs=inputs, filters=start_filters, block_fn=block_fn, blocks=layers[0],
@@ -338,11 +339,11 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
 
         inputs = batch_norm_relu(inputs, is_training, data_format)
         inputs = tf.layers.average_pooling2d(
-            inputs=inputs, pool_size=7, strides=1, padding='VALID',
+            inputs=inputs, pool_size=6, strides=1, padding='VALID',
             data_format=data_format)
         inputs = tf.identity(inputs, 'final_avg_pool')
         inputs = tf.reshape(inputs,
-                            [-1, 512 if block_fn is building_block else 2048])
+                            [-1, start_filters * 8 if block_fn is building_block else start_filters * 32])
         inputs = tf.layers.dense(inputs=inputs, units=num_classes)
         inputs = tf.identity(inputs, 'final_dense')
         return inputs
@@ -366,4 +367,4 @@ def imagenet_resnet_v2(resnet_size, num_classes, data_format=None, start_filters
 
     params = model_params[resnet_size]
     return imagenet_resnet_v2_generator(
-        params['block'], params['layers'], num_classes, data_format, start_filters=64)
+        params['block'], params['layers'], num_classes, data_format, start_filters=start_filters)

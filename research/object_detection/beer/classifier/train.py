@@ -38,10 +38,12 @@ def parse_args():
         '--resnet_size', type=int, default=34, choices=[18, 34, 50, 101, 152, 200],
         help='The size of the ResNet model to use.')
     parser.add_argument(
-        '--image_size', type=int, default=112,
+        '--postfix', help='postfix to file', default='patch', type=str)
+    parser.add_argument(
+        '--image_size', type=int, default=192,
         help='The size of the ResNet model to use.')
     parser.add_argument(
-        '--class_num', type=int, default=9,
+        '--label_size', type=int, default=34,
         help='class number.')
     parser.add_argument(
         '--train_epochs', type=int, default=100,
@@ -69,27 +71,34 @@ def parse_args():
 def file_names(is_training, data_dir):
     """Return file_names for dataset."""
     if is_training:
-        return [os.path.join(data_dir, 'train')]
+        return [os.path.join(data_dir, 'train_{}.record'.format(FLAGS.postfix))]
     else:
-        return [os.path.join(data_dir, 'val')]
+        return [os.path.join(data_dir, 'val_{}.record'.format(FLAGS.postfix))]
 
 
 def record_parser(value, is_training):
     """Parse an ImageNet record from `value`."""
     keys_to_features = {
         'img_raw':
-            tf.FixedLenFeature((), tf.string, default_value=''),
+            tf.FixedLenFeature([], dtype=tf.string, default_value=''),
         'label':
             tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+        'height':
+            tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+        'width':
+            tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+        'channel':
+            tf.FixedLenFeature([], dtype=tf.int64, default_value=3),
     }
 
     parsed = tf.parse_single_example(value, keys_to_features)
 
-    image = tf.image.decode_image(tf.reshape(parsed['img_raw'], shape=[]), 3)
+    # image = tf.image.decode_image(tf.reshape(parsed['img_raw'], shape=[]), 3)
+    image = tf.decode_raw(parsed['img_raw'], tf.uint8)
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
     image = preprocess_image(
-        image=image,
+        image=tf.reshape(image, [parsed['height'], parsed['width'], parsed['channel']]),
         output_height=FLAGS.image_size,
         output_width=FLAGS.image_size,
         is_training=is_training)
@@ -131,7 +140,7 @@ def resnet_model_fn(features, labels, mode, params):
     tf.summary.image('images', features, max_outputs=6)
 
     network = imagenet_resnet_v2(
-        params['resnet_size'], FLAGS.label_size, params['data_format'])
+        params['resnet_size'], FLAGS.label_size + 1, params['data_format'])
     logits = network(
         inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
 
