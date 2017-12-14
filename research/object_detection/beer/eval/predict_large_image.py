@@ -37,7 +37,7 @@ def merge_region_prediction(boxes, scores, classes, percent):
                 src_area = min((_box[2] - _box[0]) * (_box[3] - _box[1]),
                                (box[2] - box[0]) * (box[3] - box[1]))
                 area = get_overlap_area(_box, box)
-                if (area / src_area) > percent:
+                if (src_area < 0.001) or ((area / src_area) > percent):
                     is_add = False
                     break
         if is_add:

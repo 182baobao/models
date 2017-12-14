@@ -21,11 +21,13 @@ def slice_image(image, axis=0, wrap_pixel=128, wrap_ratio=0, slice_seat=0.5):
         wrap_pixel = int(image.shape[axis] * wrap_ratio)
     if axis == 0:
         former = image[:(seat + wrap_pixel // 2), :, :]
-        later = image[(seat + wrap_pixel // 2):, :, :]
+        later = image[(seat - wrap_pixel // 2):, :, :]
+        later_key = '{}_{}'.format(seat - wrap_pixel // 2, 0)
     else:
         former = image[:, (seat + wrap_pixel // 2), :]
-        later = image[:, (seat + wrap_pixel // 2):, :]
-    return former, later
+        later = image[:, (seat - wrap_pixel // 2):, :]
+        later_key = '{}_{}'.format(0, seat - wrap_pixel // 2)
+    return (former, '{}_{}'.format(0, 0)), (later, later_key)
 
 
 def predict_image(checkpoint, label_file, image_list, score, percent):
@@ -48,7 +50,7 @@ def predict_image(checkpoint, label_file, image_list, score, percent):
             start_time = time.time()
             for idx, image in enumerate(image_list):
                 img = cv2.imread(image)[:, :, (2, 1, 0)] if isinstance(image, str) else image
-                top_img, bottom_img = slice_image(img)
+                (top_img, top_key), (bottom_img, bottom_key) = slice_image(img)
                 # top image
                 top_cropper = ImageDictCropper(top_img, (320, 320), (120, 200))
                 top_cropper.update()
@@ -62,7 +64,7 @@ def predict_image(checkpoint, label_file, image_list, score, percent):
                     boxes, classes, scores = convert_region_box_to_global(
                         {'shape': top_img.shape, 'crop_shape': (320, 320)}, boxes, classes, scores, key)
                     boxes, classes, scores = convert_region_box_to_global(
-                        {'shape': img.shape, 'crop_shape': top_img.shape}, boxes, classes, scores, key)
+                        {'shape': img.shape, 'crop_shape': top_img.shape}, boxes, classes, scores, top_key)
                     _boxes += boxes
                     _classes += classes
                     _scores += scores
@@ -73,11 +75,11 @@ def predict_image(checkpoint, label_file, image_list, score, percent):
                 for key, value in bottom_images.items():
                     image_np = np.flip(value, 0).astype(np.uint8)
                     boxes, classes, scores = run_detection(sess, detection_graph, image_np)
-                    boxes = np.vstack((1 - boxes[:, 2], boxes[:, 1], 1 - boxes[:, 0], boxes[:, 3])).T
+                    boxes = np.vstack((1.0 - boxes[:, 2], boxes[:, 1], 1.0 - boxes[:, 0], boxes[:, 3])).T
                     boxes, classes, scores = convert_region_box_to_global(
                         {'shape': bottom_img.shape, 'crop_shape': (320, 320)}, boxes, classes, scores, key)
                     boxes, classes, scores = convert_region_box_to_global(
-                        {'shape': img.shape, 'crop_shape': bottom_img.shape}, boxes, classes, scores, key)
+                        {'shape': img.shape, 'crop_shape': bottom_img.shape}, boxes, classes, scores, bottom_key)
                     _boxes += boxes
                     _classes += classes
                     _scores += scores
